@@ -393,12 +393,21 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
   <section class="archive" id="archive">
     <div class="ar-head">
       <h2>アーカイブ</h2>
+      <div class="ar-share">
+        <button id="loginBtn" hidden>編集モード</button>
+      </div>
       <div class="ar-share" id="arShare" hidden>
         <label class="btn" for="impFile">共有ファイルを読み込む<input type="file" id="impFile" accept=".swinglab,application/octet-stream"></label>
         <button id="expAll">表示中の記録を書き出す</button>
       </div>
     </div>
     <span class="ar-usage" id="arUsage"></span>
+    <form class="savebar" id="loginBox" hidden>
+      <label>GitHub のアクセストークン<input type="password" id="loginToken" autocomplete="off" placeholder="github_pat_…"></label>
+      <button class="primary" type="submit" id="loginSend">編集モードにする</button>
+      <button type="button" id="loginCancel">閉じる</button>
+      <p class="note">保存・編集・削除ができるのはトークンを持つ人だけです。トークンはこの端末のブラウザにだけ保存され、ほかの人には送られません。作り方: GitHub の Settings → Developer settings → Fine-grained tokens で、対象リポジトリを swinglab のみ、権限を Contents: Read and write にします。</p>
+    </form>
     <div class="savebar" id="saveBar"></div>
     <div class="ar-tools">
       <input type="search" id="arSearch" placeholder="タイトル・メモで絞り込み" aria-label="アーカイブを絞り込み">
@@ -530,7 +539,7 @@ function loadVideo(file){
 function isoDate(d){const z=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;}
 function loadVideoUrl(url,name){
   return new Promise((res,rej)=>{
-    const el=document.createElement('video'); el.muted=true; el.playsInline=true; el.preload='auto'; el.src=url;
+    const el=document.createElement('video'); el.muted=true; el.playsInline=true; el.preload='auto'; if(/^https?:/.test(url)) el.crossOrigin='anonymous'; el.src=url;
     hidden.appendChild(el);
     el.addEventListener('error',()=>rej(new Error('この形式の動画は読み込めませんでした。MP4 (H.264) か MOV で試してください。')),{once:true});
     el.addEventListener('loadedmetadata',async ()=>{
@@ -556,7 +565,7 @@ function makeDiffer(src){
     for(let j=0;j<g.length;j++) g[j]=d[j*4]*.3+d[j*4+1]*.59+d[j*4+2]*.11;
     let e=null; if(prev){e=0; for(let j=0;j<g.length;j++) e+=Math.abs(g[j]-prev[j]); e/=g.length;} prev=g; return e; };
 }
-function mkVideo(url){const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; v.src=url; hidden.appendChild(v);
+function mkVideo(url){const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; if(/^https?:/.test(url)) v.crossOrigin='anonymous'; v.src=url; hidden.appendChild(v);
   return new Promise((res,rej)=>{ if(v.readyState>=2) return res(v); v.addEventListener('loadeddata',()=>res(v),{once:true}); v.addEventListener('error',()=>rej(new Error('video')),{once:true}); });}
 async function scanPlay(src,t0,t1,rate,onProg){
   if(src.kind!=='video' || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return null;
@@ -1159,7 +1168,7 @@ async function keepSwing(w){
       phases, est:{stance:true,top:true,impact:true,finish:true}, tracks, anns:A.anns, scale:A.scale, checks:A.checks, memo:[`${live}本中 ${w.rank??'-'}位 · 総合${w.score??'-'}点 · 元の動画の ${fmtClock(w.impact)} 付近`, A.memo].filter(Boolean).join('\n'),
       bat:A.bat||{...BAT}, session:{count:live, rank:w.rank, score:w.score, swingNo:w.n}};
     if(AR.ready && AR.assets){
-      if(!AR.local && file.size>20*1024*1024) throw {code:'too_large'};
+      if(!AR.local && !AR.remote && file.size>20*1024*1024) throw {code:'too_large'};
       $('#swTitle').textContent='保存しています…';
       const up=await AR.assets.upload(file,{type:clip.type});
       const now=new Date().toISOString();
@@ -1243,6 +1252,100 @@ async function makeLocalBackend(){
   return {db:{collection:()=>col}, assets};
 }
 
+/* ---------- cloud backend (GitHub repository) for the GitHub Pages build ---------- */
+const GH={owner:'kiyomaru0125-netizen', repo:'swinglab', branch:'main'};
+const GH_API=()=>`https://api.github.com/repos/${GH.owner}/${GH.repo}`;
+const GH_TOKEN_KEY='swinglab-gh-token';
+function ghToken(){ try{return localStorage.getItem(GH_TOKEN_KEY)||'';}catch(_){return '';} }
+async function gh(path,opt={},token){
+  const h={'Accept':'application/vnd.github+json'}; if(token) h.Authorization='Bearer '+token;
+  if(opt.body) h['Content-Type']='application/json';
+  const r=await fetch(GH_API()+path,{...opt,headers:{...h,...(opt.headers||{})}});
+  if(!r.ok){ const e=new Error(`GitHub ${r.status}`); e.status=r.status; e.code= r.status===401||r.status===403?'not_granted': r.status===422||r.status===409?'conflict':'store_unavailable'; throw e; }
+  return r.status===204?null:r.json();
+}
+function blobToB64(blob){return new Promise((res,rej)=>{const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]||''); fr.onerror=()=>rej(fr.error); fr.readAsDataURL(blob);});}
+function utf8B64(str){const b=new TextEncoder().encode(str); let s=''; for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s);}
+function makeGitHubBackend(){
+  const listeners=new Set(), errs=new Set(); let records=[]; const pending=[];
+  const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const pagesBase=`https://${GH.owner}.github.io/${GH.repo}/`;
+  const emit=()=>{ const docs=records.slice().sort((a,b)=>(b.shotDate||'').localeCompare(a.shotDate||''));
+    const snap={docs:docs.map(r=>{const {id,...body}=r; return {id,data:()=>body};})}; listeners.forEach(f=>f(snap)); };
+  async function readIndex(ref){
+    try{ const r=await fetch(`${GH_API()}/contents/data/index.json?ref=${ref||GH.branch}`,{headers:{'Accept':'application/vnd.github.raw',...(ghToken()?{Authorization:'Bearer '+ghToken()}:{})},cache:'no-store'});
+      if(r.status===404) return []; if(!r.ok) throw new Error(r.status); const j=await r.json(); return Array.isArray(j.records)?j.records:[]; }
+    catch(_){ const r=await fetch(pagesBase+'data/index.json?t='+Date.now(),{cache:'no-store'}); if(r.status===404) return []; if(!r.ok) throw new Error('index'); const j=await r.json(); return Array.isArray(j.records)?j.records:[]; }
+  }
+  const refresh=async()=>{ try{ records=await readIndex(); emit(); }catch(_){ errs.forEach(f=>f({code:'unavailable'})); } };
+  // one commit: apply fn(records) -> new records, plus pending video files and deletions
+  async function commit(message,mutate,extraDeletes=[]){
+    const token=ghToken(); if(!token) throw {code:'not_granted'};
+    for(let attempt=0;attempt<2;attempt++){
+      const ref=await gh(`/git/ref/heads/${GH.branch}`,{},token); const head=ref.object.sha;
+      const hc=await gh(`/git/commits/${head}`,{},token);
+      const current=await readIndex(head);
+      const next=mutate(current.map(r=>({...r})));
+      const tree=[];
+      for(const f of pending){ const bl=await gh('/git/blobs',{method:'POST',body:JSON.stringify({content:await blobToB64(f.blob),encoding:'base64'})},token); tree.push({path:f.path,mode:'100644',type:'blob',sha:bl.sha}); }
+      const idx=await gh('/git/blobs',{method:'POST',body:JSON.stringify({content:utf8B64(JSON.stringify({format:'swinglab-index',version:1,records:next})),encoding:'base64'})},token);
+      tree.push({path:'data/index.json',mode:'100644',type:'blob',sha:idx.sha});
+      extraDeletes.forEach(pth=>tree.push({path:pth,mode:'100644',type:'blob',sha:null}));
+      const t=await gh('/git/trees',{method:'POST',body:JSON.stringify({base_tree:hc.tree.sha,tree})},token);
+      const c=await gh('/git/commits',{method:'POST',body:JSON.stringify({message,tree:t.sha,parents:[head]})},token);
+      try{ await gh(`/git/refs/heads/${GH.branch}`,{method:'PATCH',body:JSON.stringify({sha:c.sha,force:false})},token); }
+      catch(e){ if(e.code==='conflict'&&attempt===0) continue; throw e; }
+      pending.length=0; records=next; emit(); return;
+    }
+  }
+  const col={
+    doc:id=>{id=id||newId('r'); return {id,
+      set:async body=>{ await commit(`記録を保存: ${body.title||id}`, list=>{const i=list.findIndex(r=>r.id===id); const rec={id,...body}; if(i>=0) list[i]=rec; else list.push(rec); return list;}); },
+      delete:async()=>{ await commit(`記録を削除: ${id}`, list=>list.filter(r=>r.id!==id)); }};},
+    orderBy(){return col;},
+    onSnapshot(fn,err){listeners.add(fn); if(err) errs.add(err); refresh(); return ()=>{listeners.delete(fn); errs.delete(err);};},
+  };
+  const assets={
+    upload:async(blob,opts)=>{ if(blob.size>95*1024*1024) throw {code:'too_large'};
+      const type=(opts&&opts.type)||blob.type||'video/mp4'; const path=`data/videos/${newId('v')}.${type==='video/webm'?'webm':'mp4'}`;
+      pending.push({path,blob}); return {id:path,url:URL.createObjectURL(blob),sizeBytes:blob.size,contentType:type}; },
+    delete:async path=>{ const i=pending.findIndex(f=>f.path===path); if(i>=0){pending.splice(i,1); return {deleted:true};}
+      await commit(`動画を削除: ${path}`, list=>list, [path]); return {deleted:true}; },
+    list:async()=>{ const bytes=records.reduce((a,r)=>a+(r.sizeBytes||0),0); return {assets:[],usage:{files:new Set(records.map(r=>r.videoId)).size,bytes,maxFiles:0,maxBytes:1024*1024*1024}}; },
+    url:path=>pagesBase+path,
+    rawUrl:path=>`https://raw.githubusercontent.com/${GH.owner}/${GH.repo}/${GH.branch}/${path}`,
+  };
+  let last=Date.now();
+  const again=()=>{ if(document.visibilityState==='visible' && Date.now()-last>20000){ last=Date.now(); refresh(); } };
+  document.addEventListener('visibilitychange',again); setInterval(again,60000);
+  return {db:{collection:()=>col}, assets};
+}
+async function checkToken(token){
+  const r=await gh('',{},token);
+  return !!(r && r.permissions && r.permissions.push);
+}
+function setEditor(on){
+  AR.editor=!!on; AR.assets=on?AR.remoteAssets:null;
+  const lb=$('#loginBtn'); lb.hidden=false; lb.textContent=AR.editor?'編集モードを終了':'編集モード';
+  $('#loginBox').hidden=true;
+  $('#arShare').hidden=false; $('#impFile').parentElement.hidden=!AR.assets;
+  updateSaveBar(); renderArchive(); refreshUsage();
+}
+$('#loginBtn').addEventListener('click',()=>{
+  if(AR.editor){ try{localStorage.removeItem(GH_TOKEN_KEY);}catch(_){} setEditor(false); toast('編集モードを終了しました。この端末からトークンを消去しました'); return; }
+  const bx=$('#loginBox'); bx.hidden=!bx.hidden; if(!bx.hidden) $('#loginToken').focus();
+});
+$('#loginCancel').addEventListener('click',()=>{$('#loginBox').hidden=true;});
+$('#loginBox').addEventListener('submit',async e=>{
+  e.preventDefault(); const tk=$('#loginToken').value.trim(); if(!tk){toast('トークンを貼り付けてください');return;}
+  const b=$('#loginSend'); b.disabled=true;
+  try{ if(!await checkToken(tk)) throw new Error('perm');
+    try{localStorage.setItem(GH_TOKEN_KEY,tk);}catch(_){}
+    $('#loginToken').value=''; setEditor(true); toast('編集モードになりました。この端末では次回から自動で編集できます');
+  }catch(_){ toast('このトークンでは保存できません。対象リポジトリと「Contents: Read and write」の権限を確認してください'); }
+  finally{ b.disabled=false; }
+});
+
 /* ---------- archive ---------- */
 const AR={db:null, assets:null, docs:[], ready:false, busy:false, armed:null};
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1269,7 +1372,7 @@ function uploadType(file){
 }
 function errText(e){
   const c=e&&e.code;
-  return ({too_large:'動画が20MBを超えています。複数スイングの動画なら「ベストを残す」で必要な部分だけを保存できます。1スイングの動画はスマホの編集機能で前後を切り取ってください。',
+  return ({too_large:AR.remote?'動画が大きすぎます(1本95MBまで)。「ベストを残す」で必要な部分だけを保存してください。':'動画が20MBを超えています。複数スイングの動画なら「ベストを残す」で必要な部分だけを保存できます。1スイングの動画はスマホの編集機能で前後を切り取ってください。',
     unsupported_type:'この動画形式は保存できません。MP4 か WebM で書き出してください。',
     quota_or_state:'保存容量がいっぱいです。古い動画を削除してから保存してください。',
     quota_exceeded:'保存件数の上限に達しました。古い記録を削除してください。',
@@ -1280,6 +1383,7 @@ function errText(e){
 }
 function updateSaveBar(){
   const bar=$('#saveBar'), A=S.A; if(!bar||!A) return;
+  if(AR.remote && !AR.editor){bar.innerHTML='<p class="note">閲覧用の表示です。記録の一覧・動画・成長グラフを見られます。計測や描画は自由に試せますが、保存は編集モードの人だけができます。</p>'; return;}
   if(!AR.ready){bar.innerHTML='<p class="note">このブラウザではアーカイブを使えません。Chrome・Edge・Safari などの最新版で開いてください。</p>'; return;}
   if(A.kind==='demo'){bar.innerHTML='<p class="note">デモ映像は保存できません。「動画を読み込む」で自分のスイングを開くと、動画・フェーズ・追跡・チェック・メモをまとめて保存できます。</p>'; return;}
   if(!AR.assets && !A.videoId){bar.innerHTML='<p class="note">閲覧のみの権限のため、新しい動画は保存できません。</p>'; return;}
@@ -1298,7 +1402,7 @@ async function saveCurrent(asNew){
   try{
     if(!A.videoId){
       if(!AR.assets) throw {code:'not_granted'};
-      if(!AR.local && A.file && A.file.size>20*1024*1024) throw {code:'too_large'};
+      if(!AR.local && !AR.remote && A.file && A.file.size>20*1024*1024) throw {code:'too_large'};
       btn.textContent='動画をアップロード中…';
       const r=await AR.assets.upload(A.file,{type:uploadType(A.file)});
       A.videoId=r.id; A.sizeBytes=r.sizeBytes;
@@ -1349,7 +1453,8 @@ async function openArchived(id,slot){
   const d=AR.docs.find(x=>x.id===id); if(!d) return;
   pause(); toast('動画を読み込んでいます…');
   try{
-    let vurl='/_blob/'+d.videoId;
+    let vurl= AR.remote ? AR.remoteAssets.url(d.videoId) : '/_blob/'+d.videoId;
+    if(AR.remote){ const ok=await fetch(vurl,{method:'HEAD',cache:'no-store'}).then(r=>r.ok).catch(()=>false); if(!ok) vurl=AR.remoteAssets.rawUrl(d.videoId); }
     if(AR.local){ const blob=await AR.assets.get(d.videoId); if(!blob) throw new Error('動画データが見つかりませんでした。ブラウザのデータが消去された可能性があります。'); vurl=URL.createObjectURL(blob); }
     const src=await loadVideoUrl(vurl, d.title);
     const copy=JSON.parse(JSON.stringify(d));
@@ -1385,18 +1490,26 @@ $('#arSearch').addEventListener('input',renderArchive);
 async function refreshUsage(){
   if(!AR.assets) return;
   try{const {usage:u}=await AR.assets.list(); const mb=b=>(b/1048576).toFixed(0);
-    $('#arUsage').textContent= AR.local ? `このブラウザに保存 · 動画 ${u.files} 本 · 使用 ${mb(u.bytes)} MB${u.maxBytes?` / 上限の目安 ${mb(u.maxBytes)} MB`:''}` : `保存容量 ${mb(u.bytes)} / ${mb(u.maxBytes)} MB · 動画 ${u.files} 本`;}catch(_){}
+    $('#arUsage').textContent= AR.remote ? `GitHub に保存 · 動画 ${u.files} 本 · ${mb(u.bytes)} MB / 目安 ${mb(u.maxBytes)} MB` : AR.local ? `このブラウザに保存 · 動画 ${u.files} 本 · 使用 ${mb(u.bytes)} MB${u.maxBytes?` / 上限の目安 ${mb(u.maxBytes)} MB`:''}` : `保存容量 ${mb(u.bytes)} / ${mb(u.maxBytes)} MB · 動画 ${u.files} 本`;}catch(_){}
 }
 (async()=>{
   const cl=window.claude;
   let [db,assets]=cl&&cl.use?await Promise.all([cl.use('db'),cl.use('assets')]):[null,null];
-  if(!cl && window.indexedDB){ try{ const b=await makeLocalBackend(); db=b.db; assets=b.assets; AR.local=true; }catch(_){ db=null; } }
+  if(!cl && GH.owner){
+    try{ const g=makeGitHubBackend(); db=g.db; AR.remote=true; AR.remoteAssets=g.assets;
+      const tk=ghToken(); AR.editor=false;
+      if(tk){ try{ AR.editor=await checkToken(tk); }catch(_){ AR.editor=false; } }
+      assets=AR.editor?g.assets:null;
+    }catch(_){ db=null; }
+  }
+  if(!db && !cl && window.indexedDB){ try{ const b=await makeLocalBackend(); db=b.db; assets=b.assets; AR.local=true; }catch(_){ db=null; } }
   AR.db=db; AR.assets=assets;
   if(AR.local) $('#arStatus').textContent='';
   if(!db){ $('#arStatus').textContent=''; updateSaveBar(); $('#arGrid').innerHTML=''; return; }
   AR.ready=true;
-  if(AR.local) AR.canExport=true; else { try{ AR.canExport=!!(await cl.use('downloads')); }catch(_){ AR.canExport=false; } }
+  if(AR.local||AR.remote) AR.canExport=true; else { try{ AR.canExport=!!(await cl.use('downloads')); }catch(_){ AR.canExport=false; } }
   $('#arShare').hidden=!(AR.canExport||AR.assets); $('#expAll').hidden=!AR.canExport; $('#impFile').parentElement.hidden=!AR.assets;
+  if(AR.remote) setEditor(AR.editor);
   updateSaveBar();
   db.collection('swings').orderBy('shotDate','desc').onSnapshot(snap=>{
     AR.docs=snap.docs.map(x=>({id:x.id,...x.data()})); renderArchive(); renderGrowth();
@@ -1410,7 +1523,8 @@ function visibleDocs(){return AR.docs;}
 const MAGIC='SWLB1';
 async function videoBlob(d){
   if(AR.local) return await AR.assets.get(d.videoId);
-  const r=await fetch('/_blob/'+d.videoId); if(!r.ok) throw new Error('動画を取得できませんでした'); return await r.blob();
+  let r=await fetch(AR.remote?AR.remoteAssets.url(d.videoId):'/_blob/'+d.videoId);
+  if(!r.ok && AR.remote) r=await fetch(AR.remoteAssets.rawUrl(d.videoId)); if(!r.ok) throw new Error('動画を取得できませんでした'); return await r.blob();
 }
 function safeName(t){return (t||'swing').replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,40);}
 async function exportRecords(ids){
@@ -1431,7 +1545,7 @@ async function exportRecords(ids){
   }catch(e){ toast(e.message||'書き出せませんでした'); }
 }
 async function deliverFile(name,blob){
-  if(!AR.local){
+  if(!AR.local && !AR.remote){
     const dl=await window.claude.use('downloads'); if(!dl){toast('この表示では書き出しできません');return;}
     try{const r=await dl.save({filename:name,data:blob}); if(r&&r.status==='saved') toast('共有ファイルを保存しました。LINE やメールで相手に送ってください');}
     catch(e){ if(e&&e.code!=='cancelled'&&e.code!=='declined') toast(`保存できませんでした(${e.code||'不明'})`); }
@@ -1461,7 +1575,7 @@ async function importFile(file){
       if(ex && (ex.updatedAt||'')>=(r.updatedAt||'')){same++; continue;}
       try{
         const vb=new Blob([u8.slice(base+r.video.offset, base+r.video.offset+r.video.length)],{type:r.video.type});
-        if(!AR.local && vb.size>20*1024*1024) throw {code:'too_large'};
+        if(!AR.local && !AR.remote && vb.size>20*1024*1024) throw {code:'too_large'};
         const up=await AR.assets.upload(vb,{type:(r.video.type==='video/webm'?'video/webm':'video/mp4')});
         const {video, id:_i, ...rest}=r;
         const body=JSON.parse(JSON.stringify({...rest, videoId:up.id, sizeBytes:up.sizeBytes}));
