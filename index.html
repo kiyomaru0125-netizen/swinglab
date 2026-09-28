@@ -1,0 +1,1621 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>スイングラボ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#EEF1EE; --surface:#FFFFFF; --surface-2:#E4E9E5; --ink:#15201B; --muted:#58665F; --line:#CCD5CF;
+  --accent:#1E6A48; --accent-ink:#FFFFFF; --accent-soft:#D5E8DD;
+  --stage:#0C120F; --mark:#F2B705;
+  --p1:#4F7FD9; --p2:#8E5CD6; --p3:#D9792B; --p4:#C8372D; --p5:#2F9A6C;
+  --good:#2F9A6C; --warn:#C98A12; --bad:#C8372D;
+  --series:#0E8551; --grid:#E3E8E4;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0C110E; --surface:#141B17; --surface-2:#1C2520; --ink:#E4EBE6; --muted:#93A198; --line:#29342E;
+    --accent:#4DBE8A; --accent-ink:#06120C; --accent-soft:#1D3328;
+    --p1:#7BA3F0; --p2:#B08AF0; --p3:#F09A52; --p4:#F0645A; --p5:#4DBE8A;
+    --good:#4DBE8A; --warn:#E8B23A; --bad:#F0645A;
+    --series:#34A873; --grid:#232D28;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0C110E; --surface:#141B17; --surface-2:#1C2520; --ink:#E4EBE6; --muted:#93A198; --line:#29342E;
+  --accent:#4DBE8A; --accent-ink:#06120C; --accent-soft:#1D3328;
+  --p1:#7BA3F0; --p2:#B08AF0; --p3:#F09A52; --p4:#F0645A; --p5:#4DBE8A;
+  --good:#4DBE8A; --warn:#E8B23A; --bad:#F0645A;
+    --series:#34A873; --grid:#232D28;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.6}
+.wrap{max-width:1360px;margin:0 auto;padding-inline:16px;padding-block:14px 32px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{margin:0;font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.04em;line-height:1}
+.brand h1 span{color:var(--accent)}
+.brand p{margin:0;color:var(--muted);font-size:12.5px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button,.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+button:hover,.btn:hover{border-color:var(--accent)}
+button:focus-visible,.btn:focus-within,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary,.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn input{display:none}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+@media (max-width:960px){.main{grid-template-columns:1fr}}
+.viewer{display:flex;flex-direction:column;gap:10px;min-width:0}
+.stage{background:var(--stage);border-radius:8px;position:relative;display:flex;justify-content:center;align-items:center;gap:6px;padding:6px;min-height:200px}
+.stage canvas{display:block;max-width:100%;max-height:62vh;width:auto;height:auto;border-radius:4px}
+.stage.compare canvas{max-width:calc(50% - 3px)}
+@media (max-width:600px){.stage.compare{flex-direction:column}.stage.compare canvas{max-width:100%;max-height:40vh}}
+.stage .tag{position:absolute;top:10px;font-family:var(--display);font-size:13px;letter-spacing:.08em;color:#E8EEE9;background:rgba(0,0,0,.55);padding:2px 8px;border-radius:3px;pointer-events:none}
+#tagA{left:12px}#tagB{right:12px}
+.stage.drag{outline:3px dashed var(--mark);outline-offset:-6px}
+#canvasA{touch-action:none}
+#canvasA.tool-on{cursor:crosshair}
+.transport{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.transport .grp{display:flex;gap:4px;align-items:center}
+.transport button{padding:5px 10px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 9px;background:var(--surface)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.clock{margin-left:auto;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink);display:flex;gap:12px}
+.clock small{color:var(--muted);font-family:var(--body)}
+.timeline{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px 6px}
+.timeline .hd{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:4px;gap:8px;flex-wrap:wrap}
+#tl{width:100%;height:108px;display:block;cursor:pointer;touch-action:none}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;border-radius:0;background:transparent;padding:10px 6px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;justify-content:center}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabpane{padding:14px;display:flex;flex-direction:column;gap:16px}
+h2{margin:0;font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.field{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;font-size:13px}
+select,input[type=number]{font:inherit;font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+input[type=number]{width:84px;font-family:var(--mono)}
+.phases{display:flex;flex-direction:column;gap:2px}
+.ph{display:grid;grid-template-columns:10px 1fr auto auto;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.ph:last-child{border-bottom:0}
+.dot{width:10px;height:10px;border-radius:50%}
+.ph .t{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--muted);min-width:64px;text-align:right}
+.ph .t.est::after{content:" 推定";font-family:var(--body);font-size:10.5px;color:var(--warn)}
+.ph .b{display:flex;gap:4px}
+.ph .b button{padding:3px 7px;font-size:12px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{background:var(--surface-2);border-radius:6px;padding:9px 10px;display:flex;flex-direction:column;gap:2px}
+.metric .k{font-size:11.5px;color:var(--muted)}
+.metric .v{font-family:var(--mono);font-size:19px;font-variant-numeric:tabular-nums;line-height:1.2}
+.metric .v small{font-size:11px;color:var(--muted);margin-left:3px}
+.metric .s{font-size:11px;color:var(--muted)}
+.metric.wide{grid-column:1 / -1}
+.note{font-size:12px;color:var(--muted);margin:0}
+.chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--ink)}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tools button{flex-direction:column;gap:2px;padding:8px 4px;justify-content:center}
+.tools button svg{width:20px;height:20px}
+.tools button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.hint{background:var(--surface-2);border-radius:6px;padding:9px 11px;font-size:12.5px;color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.check{display:flex;flex-direction:column;gap:8px}
+.ci{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-size:13px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.ci .seg button{padding:3px 8px;font-size:12px}
+.ci .seg button[data-v="good"][aria-pressed="true"]{background:var(--good);color:#fff}
+.ci .seg button[data-v="mid"][aria-pressed="true"]{background:var(--warn);color:#111}
+.ci .seg button[data-v="bad"][aria-pressed="true"]{background:var(--bad);color:#fff}
+textarea{font:inherit;font-size:13px;width:100%;min-height:90px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px;resize:vertical}
+.swings{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.sw-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.sw-head h2{color:var(--ink);font-size:16px}
+.sw-best{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;background:var(--accent-soft);border-radius:6px;padding:10px 12px}
+.sw-best .big{font-size:22px;font-weight:700;line-height:1.2}
+.sw-best .big small{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+.sw-best .row{margin-left:auto}
+.sw-table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:560px}
+.sw-table th,.sw-table td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.sw-table th{color:var(--muted);font-weight:500;font-size:11.5px}
+.sw-table td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.sw-table th.n{text-align:right}
+.sw-table tr.cur td{background:var(--surface-2)}
+.sw-table tr.off td{opacity:.45}
+.sw-table button{padding:2px 8px;font-size:12px}
+.sbar{display:inline-block;width:70px;height:6px;border-radius:3px;background:var(--surface-2);vertical-align:middle;margin-right:6px;overflow:hidden}
+.sbar i{display:block;height:100%;background:var(--series);border-radius:3px}
+.rank1{display:inline-block;min-width:22px;text-align:center;border-radius:4px;background:var(--series);color:#fff;font-weight:700}
+.progress{height:3px;background:var(--surface-2);border-radius:2px;overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .1s}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--surface)}
+.growth{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.growth .ar-head .row{gap:8px}
+.g-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.gcard{border:1px solid var(--line);border-radius:8px;padding:12px 12px 6px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.gcard .gl{font-size:12.5px;color:var(--muted)}
+.gcard .gv{font-size:28px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+.gcard .gv small{font-size:13px;font-weight:500;color:var(--muted);margin-left:4px}
+.gcard .gd{font-size:12px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;color:var(--muted)}
+.gd .dl{display:inline-flex;align-items:center;gap:3px;font-weight:700;padding:0 6px;border-radius:4px}
+.gd .dl.good{color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent)}
+.gd .dl.bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,transparent)}
+.gd .dl.flat{color:var(--ink);background:var(--surface-2)}
+.gcard svg{display:block;width:100%;height:150px;overflow:visible}
+.gcard .empty{height:150px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12.5px;color:var(--muted);background:var(--surface-2);border-radius:6px;padding:12px}
+.gx text{fill:var(--muted);font-family:var(--mono);font-size:10px}
+.gx line.grid{stroke:var(--grid);stroke-width:1}
+.gline{fill:none;stroke:var(--series);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.garea{fill:var(--series);opacity:.1}
+.gdot{fill:var(--series);stroke:var(--surface);stroke-width:2}
+.gend{fill:var(--ink);font-family:var(--mono);font-size:11px;font-weight:500}
+.gcross{stroke:var(--muted);stroke-width:1}
+.ghit{fill:transparent;cursor:crosshair}
+.ghit.link{cursor:pointer}
+.sample-band{background:var(--accent-soft);border-radius:6px;padding:8px 11px;font-size:12.5px}
+.gtip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.18);max-width:240px}
+.gtip b{font-family:var(--mono);font-size:14px}
+.gtip .m{color:var(--muted)}
+.tablewrap{overflow-x:auto}
+.tablewrap table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:560px}
+.tablewrap th,.tablewrap td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.tablewrap th{color:var(--muted);font-weight:500;font-size:11.5px}
+.tablewrap td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.tablewrap th.n{text-align:right}
+.archive{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:14px}
+.ar-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.ar-head h2{font-size:18px;color:var(--ink)}
+.ar-usage{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.savebar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;background:var(--surface-2);border-radius:6px;padding:10px 12px}
+.savebar label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);flex:1 1 180px}
+.savebar input[type=text],.savebar input[type=date],.ar-tools input{font:inherit;font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+.savebar .note{flex-basis:100%}
+.ar-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ar-tools input{max-width:280px}
+.ar-tools select,.growth select{font:inherit;font-size:13px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.ar-share{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ar-share .btn input{display:none}
+
+.ar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.card{border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;background:var(--surface)}
+.card.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card .th{aspect-ratio:16/9;max-width:100%;background:var(--stage);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.card .th img{width:100%;height:100%;object-fit:contain}
+.card .bd{padding:9px 10px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card .dt{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.card .ti{font-weight:700;font-size:13.5px;line-height:1.4;overflow-wrap:anywhere}
+.card .kv{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+.card .kv b{font-family:var(--mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.card .act{display:flex;gap:6px;margin-top:auto;padding-top:4px}
+.card .act button{padding:4px 9px;font-size:12px}
+.card .act .del{margin-left:auto}
+.card .act .del.arm{background:var(--bad);border-color:var(--bad);color:#fff}
+.ar-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--line);border-radius:8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>SWING<span>LAB</span></h1>
+      <p>スイング動画のコマ送り・計測・比較</p>
+    </div>
+    <div class="actions">
+      <label class="btn primary" for="fileA">動画を読み込む<input type="file" id="fileA" accept="video/*"></label>
+      <label class="btn" for="fileB">比較動画を追加<input type="file" id="fileB" accept="video/*"></label>
+      <button id="closeB" hidden>比較を閉じる</button>
+      <button id="demoBtn">デモ映像</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="viewer">
+      <div class="stage" id="stage">
+        <canvas id="canvasA" width="1280" height="720"></canvas>
+        <canvas id="canvasB" width="1280" height="720" hidden></canvas>
+        <span class="tag" id="tagA">A</span>
+        <span class="tag" id="tagB" hidden>B</span>
+      </div>
+
+      <div class="transport">
+        <div class="grp">
+          <button id="prevF" title="1コマ戻る (←)" aria-label="1コマ戻る">◀︎|</button>
+          <button id="play" class="primary" title="再生 / 停止 (Space)" style="min-width:64px;justify-content:center">再生</button>
+          <button id="nextF" title="1コマ進む (→)" aria-label="1コマ進む">|▶︎</button>
+        </div>
+        <div class="seg" id="speeds" role="group" aria-label="再生速度">
+          <button data-s="0.1">0.1×</button>
+          <button data-s="0.25" aria-pressed="true">0.25×</button>
+          <button data-s="0.5">0.5×</button>
+          <button data-s="1">1×</button>
+        </div>
+        <button id="loopBtn" aria-pressed="false" title="トップからフィニッシュまでを繰り返し再生">区間リピート</button>
+        <div class="clock"><span id="clkT">0.000 s</span><span id="clkF"><small>コマ</small> 0</span></div>
+      </div>
+
+      <div class="timeline">
+        <div class="hd">
+          <span>動きの量(フレーム間の画素変化)と各フェーズ</span>
+          <span><kbd>Space</kbd> 再生 <kbd>←</kbd><kbd>→</kbd> コマ送り</span>
+        </div>
+        <canvas id="tl" height="108"></canvas>
+        <div class="progress" id="scanBar" hidden><i></i></div>
+      </div>
+
+      <div class="swings" id="swPanel" hidden>
+        <div class="sw-head">
+          <h2 id="swTitle">この動画のスイング</h2>
+          <div class="row"><button id="swMore" hidden>さらに5本を詳しく解析</button></div>
+        </div>
+        <div class="progress" id="swBar" hidden><i></i></div>
+        <div class="sw-best" id="swBest"></div>
+        <div class="tablewrap"><table class="sw-table" id="swTable"></table></div>
+        <p class="note">総合点は「振りの鋭さ(動きの量のピーク)60%」と「スイング時間の短さ 40%」で、同じ動画の中だけで比べた目安です。フォームの良し悪しは含みません。誤検出は「除外」で外せます。</p>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="measure">計測</button>
+        <button role="tab" aria-selected="false" data-tab="draw">描画・追跡</button>
+        <button role="tab" aria-selected="false" data-tab="check">チェック</button>
+      </div>
+
+      <div class="tabpane" id="tab-measure">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>映像の設定 <span class="chip" id="srcName">デモ映像(サンプル)</span></h2>
+          <div class="field"><label for="fpsSel">撮影フレームレート</label>
+            <select id="fpsSel"><option value="30">30 fps</option><option value="60">60 fps</option><option value="120">120 fps</option><option value="240">240 fps</option></select></div>
+          <div class="field"><label for="slowSel">スロー再生で書き出した動画</label>
+            <select id="slowSel"><option value="1">いいえ(等倍)</option><option value="2">1/2 スロー</option><option value="4">1/4 スロー</option><option value="8">1/8 スロー</option></select></div>
+          <p class="note" id="precNote"></p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>使用バット</h2>
+          <div class="field"><label for="batLen">長さ (cm)</label><input type="number" id="batLen" min="40" max="100" step="1"></div>
+          <div class="field"><label for="batWt">重さ (g)</label><input type="number" id="batWt" min="200" max="1200" step="10"></div>
+          <p class="note">保存する記録にこのバットが一緒に残ります。基準長の初期値にもこの長さを使います。</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h2>スイングのフェーズ <button id="autoBtn" style="padding:3px 9px;font-size:12px;text-transform:none;letter-spacing:0">自動推定</button></h2>
+          <div class="phases" id="phases"></div>
+          <p class="note">再生位置を合わせて「設定」を押します。自動推定は動きの量のピークをインパクトとみなす簡易推定です。</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>タイミング</h2>
+          <div class="metrics" id="timing"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>追跡から算出</h2>
+          <div class="metrics" id="trackMetrics"></div>
+        </div>
+
+        <div id="compareBox" hidden style="display:flex;flex-direction:column;gap:8px">
+          <h2>比較動画 B</h2>
+          <p class="note">A と B をインパクトの瞬間で揃えて同時に再生します。ずれていれば B を1コマ単位で調整してください。</p>
+          <div class="row">
+            <button id="bMinus">B を1コマ早く</button>
+            <button id="bPlus">B を1コマ遅く</button>
+          </div>
+          <div class="field"><label for="fpsSelB">B の撮影フレームレート</label>
+            <select id="fpsSelB"><option value="30">30 fps</option><option value="60">60 fps</option><option value="120">120 fps</option><option value="240">240 fps</option></select></div>
+          <p class="note" id="bInfo"></p>
+        </div>
+      </div>
+
+      <div class="tabpane" id="tab-draw" hidden>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>ツール</h2>
+          <div class="tools" id="tools">
+            <button data-tool="none" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l12 9-6 1-3 6z"/></svg>閲覧</button>
+            <button data-tool="line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20L20 4"/><circle cx="4" cy="20" r="1.5" fill="currentColor"/><circle cx="20" cy="4" r="1.5" fill="currentColor"/></svg>直線</button>
+            <button data-tool="angle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 19H5L15 5"/><path d="M10 19a5 5 0 0 0-2-4" /></svg>角度</button>
+            <button data-tool="circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>円</button>
+            <button data-tool="track"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18c3-1 5-4 7-8s5-5 9-5" stroke-dasharray="2 3"/><circle cx="20" cy="5" r="2" fill="currentColor"/></svg>追跡</button>
+            <button data-tool="scale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 8v8M21 8v8M9 10v4M15 10v4"/></svg>基準長</button>
+          </div>
+          <div class="hint" id="toolHint"></div>
+        </div>
+
+        <div id="trackOpts" style="display:flex;flex-direction:column;gap:8px">
+          <div class="field"><label for="trackTarget">追跡する部位</label>
+            <select id="trackTarget"><option value="bat">バットの先端</option><option value="grip">グリップ(手)</option><option value="head">頭</option></select></div>
+          <div class="field"><label for="autoAdv">クリック後に進むコマ数</label>
+            <select id="autoAdv"><option value="1">1コマ</option><option value="2">2コマ</option><option value="3">3コマ</option><option value="0">進めない</option></select></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="field"><label for="scaleCm">基準線の実際の長さ (cm)</label><input type="number" id="scaleCm" value="74" min="1" step="1"></div>
+          <p class="note" id="scaleInfo"></p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>表示</h2>
+          <label class="field"><span>ガイドのグリッド</span><input type="checkbox" id="gridChk"></label>
+          <label class="field"><span>追跡の軌跡を全体表示</span><input type="checkbox" id="trailAll"></label>
+          <div class="row">
+            <button id="undoBtn">1つ戻す</button>
+            <button id="clearTrack">追跡を消去</button>
+            <button id="clearAll">描画をすべて消去</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpane" id="tab-check" hidden>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>フォームのチェック</h2>
+          <div class="check" id="checklist"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h2>メモ</h2>
+          <textarea id="memo" placeholder="気づいたこと、次の練習で意識することなど"></textarea>
+        </div>
+        <button class="primary" id="copyReport" style="justify-content:center">計測結果とチェックをコピー</button>
+        <textarea id="reportOut" hidden readonly></textarea>
+      </div>
+    </aside>
+  </div>
+  <section class="growth" id="growth">
+    <div class="ar-head">
+      <h2>成長の推移</h2>
+      <div class="row">
+        <div class="seg" id="gRange" role="group" aria-label="表示する期間">
+          <button data-r="all" aria-pressed="true">全期間</button>
+          <button data-r="365" aria-pressed="false">1年</button>
+          <button data-r="90" aria-pressed="false">3か月</button>
+        </div>
+        <button id="gTableBtn" aria-pressed="false">表で見る</button>
+      </div>
+    </div>
+    <div class="sample-band" id="gSample" hidden></div>
+    <div class="g-grid" id="gGrid"></div>
+    <div class="tablewrap" id="gTable" hidden></div>
+    <p class="note">点にカーソルを合わせると記録の詳細が出ます。点をクリックすると、その日の動画を開きます。</p>
+  </section>
+
+  <section class="archive" id="archive">
+    <div class="ar-head">
+      <h2>アーカイブ</h2>
+      <div class="ar-share" id="arShare" hidden>
+        <label class="btn" for="impFile">共有ファイルを読み込む<input type="file" id="impFile" accept=".swinglab,application/octet-stream"></label>
+        <button id="expAll">表示中の記録を書き出す</button>
+      </div>
+    </div>
+    <span class="ar-usage" id="arUsage"></span>
+    <div class="savebar" id="saveBar"></div>
+    <div class="ar-tools">
+      <input type="search" id="arSearch" placeholder="タイトル・メモで絞り込み" aria-label="アーカイブを絞り込み">
+      <span class="note" id="arStatus">アーカイブを読み込んでいます…</span>
+    </div>
+    <div class="ar-grid" id="arGrid"></div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+<div class="gtip" id="gTip" hidden></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const cv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const PHASES = [
+  {id:'stance', label:'構え', v:'--p1'},
+  {id:'top', label:'トップ(始動)', v:'--p2'},
+  {id:'plant', label:'踏み込み足の着地', v:'--p3'},
+  {id:'impact', label:'インパクト', v:'--p4'},
+  {id:'finish', label:'フィニッシュ', v:'--p5'},
+];
+const TRACKS = {bat:{label:'バット先端', color:'#F2B705'}, grip:{label:'グリップ', color:'#5FD3FF'}, head:{label:'頭', color:'#FF7AB8'}};
+const CHECKS = [
+  '構えで力みがなく、バットの角度が安定している',
+  'トップで手が後ろに残り、下半身と上半身が割れている',
+  '踏み込み足の着地で上体が前に突っ込んでいない',
+  'スイング中の頭の移動が小さい',
+  '後ろ肘が体の近くを通り、バットが内側から出ている',
+  'インパクトで前足が止まり、体の開きを我慢できている',
+  'フォロースルーまで大きく振り切れている',
+];
+
+/* ---------- demo clip (procedural stick-figure batter) ---------- */
+const KF = [ // t, frontX, lift, handX, handY, batDeg, hipX, lean
+  [0.00,350,0,272,118,240,300,0],
+  [1.00,350,0,272,118,240,300,0],
+  [1.60,344,16,256,122,226,297,-2],
+  [1.85,392,0,258,123,215,303,0],
+  [1.90,392,0,262,124,205,304,0],
+  [1.98,392,0,295,148,140,306,1],
+  [2.05,392,0,345,172,0,308,2],
+  [2.20,392,0,360,140,-70,308,2],
+  [2.60,392,0,318,108,-160,306,1],
+  [3.00,392,0,316,106,-165,306,1],
+];
+const BAT_LEN = 118;
+function ease(x){return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2}
+function demoPose(t){
+  let i=0; while(i<KF.length-2 && t>KF[i+1][0]) i++;
+  const a=KF[i], b=KF[i+1];
+  const u = Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0]||1)));
+  const e = (a[0]>=1.89&&b[0]<=2.051) ? u*u : (a[0]>=2.04&&b[0]<=2.21) ? u*(2-u) : ease(u);
+  const v = a.map((x,k)=>x+(b[k]-x)*e);
+  const [ ,frontX,lift,hx,hy,deg,hipX,lean] = v;
+  const r = deg*Math.PI/180;
+  const hip={x:hipX,y:205}, sh={x:hipX-6+lean*3,y:125};
+  return {
+    hip, sh, head:{x:sh.x+8,y:sh.y-26}, hands:{x:hx,y:hy},
+    tip:{x:hx+BAT_LEN*Math.cos(r),y:hy+BAT_LEN*Math.sin(r)},
+    footB:{x:262,y:290}, footF:{x:frontX,y:290-lift},
+    kneeB:{x:(hipX+262)/2+10,y:248}, kneeF:{x:(hipX+frontX)/2+8,y:248-lift*.6},
+  };
+}
+function drawDemo(ctx,t,W,H){
+  const s=W/640;
+  ctx.save(); ctx.scale(s,H/360);
+  const g=ctx.createLinearGradient(0,0,0,360); g.addColorStop(0,'#1B2A33'); g.addColorStop(.8,'#23352C'); g.addColorStop(.81,'#6B4E36'); g.addColorStop(1,'#5A412D');
+  ctx.fillStyle=g; ctx.fillRect(0,0,640,360);
+  ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1.5; ctx.strokeRect(210,284,170,22);
+  ctx.fillStyle='#EDEDE6'; ctx.beginPath(); ctx.moveTo(400,294);ctx.lineTo(440,294);ctx.lineTo(445,298);ctx.lineTo(420,302);ctx.lineTo(395,298);ctx.closePath();ctx.fill();
+  const p=demoPose(t);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const limb=(pts,w,c)=>{ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);pts.slice(1).forEach(q=>ctx.lineTo(q.x,q.y));ctx.stroke();};
+  limb([p.hip,p.kneeB,p.footB],11,'#C9D2DA');
+  limb([p.hip,p.kneeF,p.footF],11,'#DDE4EA');
+  limb([p.hip,p.sh],16,'#E8EEF2');
+  const elb=(o)=>({x:(o.x+p.hands.x)/2,y:(o.y+p.hands.y)/2+16});
+  const rs={x:p.sh.x-6,y:p.sh.y+2}, ls={x:p.sh.x+6,y:p.sh.y+2};
+  limb([rs,elb(rs),p.hands],8,'#B9C3CC');
+  // bat
+  const knob={x:p.hands.x-(p.tip.x-p.hands.x)*.12,y:p.hands.y-(p.tip.y-p.hands.y)*.12};
+  ctx.strokeStyle='#D8B27A'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(knob.x,knob.y); ctx.lineTo(p.tip.x,p.tip.y); ctx.stroke();
+  ctx.lineWidth=8; ctx.beginPath(); const m={x:p.hands.x+(p.tip.x-p.hands.x)*.55,y:p.hands.y+(p.tip.y-p.hands.y)*.55}; ctx.moveTo(m.x,m.y); ctx.lineTo(p.tip.x,p.tip.y); ctx.stroke();
+  limb([ls,elb(ls),p.hands],8,'#E0E7EC');
+  ctx.fillStyle='#E8EEF2'; ctx.beginPath(); ctx.arc(p.head.x,p.head.y,14,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2B3A48'; ctx.beginPath(); ctx.arc(p.head.x+1,p.head.y-3,15,Math.PI,Math.PI*2); ctx.fill(); ctx.fillRect(p.head.x+8,p.head.y-5,11,4);
+  // ball
+  let bx,by,show=true;
+  if(t<2.05){bx=420+(2.05-t)*900; by=172-(2.05-t)*30; show=t>1.5;}
+  else {bx=420+(t-2.05)*1100; by=172-(t-2.05)*520;}
+  if(show){ctx.fillStyle='#FFFFFF';ctx.beginPath();ctx.arc(bx,by,4.5,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.font=`600 ${14*s}px "Barlow Condensed",sans-serif`; ctx.fillText('DEMO CLIP · 60fps', 14*s, (360-12)*H/360);
+}
+
+/* ---------- sources ---------- */
+function blankSource(extra){
+  return Object.assign({t:0, fps:30, slow:1, phases:{}, est:{}, energy:[], tracks:{bat:[],grip:[],head:[]}, anns:[], scale:null, offset:0, checks:{}, memo:'', archiveId:null, videoId:null}, extra);
+}
+function makeDemo(){
+  const s = blankSource({kind:'demo', name:'デモ映像(サンプル)', W:1280, H:720, duration:3, fps:60,
+    render(ctx,t){drawDemo(ctx,t,ctx.canvas.width,ctx.canvas.height)}});
+  // sample annotations so the tool opens in a working state
+  const k=2; const pi=demoPose(2.05);
+  s.scale = {a:{x:pi.hands.x*k,y:pi.hands.y*k}, b:{x:pi.tip.x*k,y:pi.tip.y*k}, cm:84};
+  for(let t=1.9;t<=2.27;t+=2/60){const p=demoPose(t); s.tracks.bat.push({t:+t.toFixed(4),x:p.tip.x*k,y:p.tip.y*k}); s.tracks.grip.push({t:+t.toFixed(4),x:p.hands.x*k,y:p.hands.y*k});}
+  for(let t=0.5;t<=2.6;t+=0.15){const p=demoPose(t); s.tracks.head.push({t:+t.toFixed(4),x:p.head.x*k,y:p.head.y*k});}
+  const pk=demoPose(2.05);
+  s.anns.push({type:'angle', pts:[{x:pk.hip.x*k,y:pk.hip.y*k},{x:pk.kneeF.x*k,y:pk.kneeF.y*k},{x:pk.footF.x*k,y:pk.footF.y*k}], t:2.05});
+  return s;
+}
+const hidden = document.createElement('div');
+hidden.style.cssText='position:fixed;width:4px;height:4px;overflow:hidden;opacity:0.01;pointer-events:none;left:0;top:0;z-index:-1';
+document.body.appendChild(hidden);
+
+function seekVideo(v,t){
+  return new Promise(res=>{
+    let done=false; const fin=()=>{if(done)return;done=true;v.removeEventListener('seeked',fin);res();};
+    v.addEventListener('seeked',fin); setTimeout(fin,1500);
+    v.currentTime=Math.max(0,Math.min(t,(v.duration||0)-0.001));
+  });
+}
+function loadVideo(file){
+  return loadVideoUrl(URL.createObjectURL(file), file.name).then(s=>{s.file=file; s.shotDate=isoDate(new Date(file.lastModified||Date.now())); return s;});
+}
+function isoDate(d){const z=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;}
+function loadVideoUrl(url,name){
+  return new Promise((res,rej)=>{
+    const el=document.createElement('video'); el.muted=true; el.playsInline=true; el.preload='auto'; el.src=url;
+    hidden.appendChild(el);
+    el.addEventListener('error',()=>rej(new Error('この形式の動画は読み込めませんでした。MP4 (H.264) か MOV で試してください。')),{once:true});
+    el.addEventListener('loadedmetadata',async ()=>{
+      if(el.duration===Infinity){ await new Promise(r=>{const f=()=>{if(isFinite(el.duration)){el.removeEventListener('durationchange',f);r();}}; el.addEventListener('durationchange',f); el.currentTime=1e7; setTimeout(r,3000);}); }
+      if(!isFinite(el.duration)||!el.videoWidth){rej(new Error('動画の長さか画面サイズを読み取れませんでした。別の形式で書き出して試してください。'));return;}
+      await seekVideo(el,0);
+      const sc=Math.min(1,1280/Math.max(el.videoWidth,el.videoHeight));
+      const s=blankSource({kind:'video', name, url, el, W:Math.round(el.videoWidth*sc), H:Math.round(el.videoHeight*sc), duration:el.duration, fps:guessFps(el.duration),
+        render(ctx){ctx.drawImage(el,0,0,ctx.canvas.width,ctx.canvas.height)}});
+      el.addEventListener('seeked',()=>renderAll());
+      res(s);
+    },{once:true});
+  });
+}
+function guessFps(){return 30}
+
+/* ---------- motion energy scan ---------- */
+function makeDiffer(src){
+  const w=96,h=Math.max(24,Math.round(96*src.H/src.W));
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d',{willReadFrequently:true});
+  let prev=null;
+  return draw=>{ draw(x,w,h); const d=x.getImageData(0,0,w,h).data; const g=new Float32Array(w*h);
+    for(let j=0;j<g.length;j++) g[j]=d[j*4]*.3+d[j*4+1]*.59+d[j*4+2]*.11;
+    let e=null; if(prev){e=0; for(let j=0;j<g.length;j++) e+=Math.abs(g[j]-prev[j]); e/=g.length;} prev=g; return e; };
+}
+function mkVideo(url){const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; v.src=url; hidden.appendChild(v);
+  return new Promise((res,rej)=>{ if(v.readyState>=2) return res(v); v.addEventListener('loadeddata',()=>res(v),{once:true}); v.addEventListener('error',()=>rej(new Error('video')),{once:true}); });}
+async function scanPlay(src,t0,t1,rate,onProg){
+  if(src.kind!=='video' || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return null;
+  let v; try{ v=await mkVideo(src.url); }catch(_){ return null; }
+  await seekVideo(v,t0);
+  const diff=makeDiffer(src), out=[]; let lastT=null;
+  return await new Promise(res=>{
+    let alive=Date.now(), finished=false, watch;
+    const fin=ok=>{ if(finished) return; finished=true; clearInterval(watch); v.pause(); v.remove(); res(ok&&out.length>3?out:null); };
+    const cb=(now,meta)=>{ if(finished) return; alive=Date.now(); const t=meta.mediaTime;
+      const e=diff((x,w,h)=>x.drawImage(v,0,0,w,h));
+      if(e!=null && lastT!=null && t>lastT) out.push({t,e:e/(t-lastT)});
+      lastT=t; onProg&&onProg(Math.min(1,(t-t0)/((t1-t0)||1)));
+      if(t>=t1) fin(true); else v.requestVideoFrameCallback(cb); };
+    v.requestVideoFrameCallback(cb);
+    watch=setInterval(()=>{ if(Date.now()-alive>5000) fin(false); },1000);
+    v.addEventListener('ended',()=>fin(true),{once:true});
+    v.playbackRate=rate; v.play().catch(()=>fin(false));
+  });
+}
+async function scanSeek(src,t0,t1,step,onProg){
+  const diff=makeDiffer(src), out=[]; let v=null;
+  if(src.kind==='video'){ v=await mkVideo(src.url); }
+  const n=Math.max(1,Math.floor((t1-t0)/step));
+  for(let i=0;i<=n;i++){
+    const t=t0+i*step;
+    const e= src.kind==='video' ? (await seekVideo(v,t), diff((x,w,h)=>x.drawImage(v,0,0,w,h))) : diff((x,w,h)=>drawDemo(x,t,w,h));
+    if(e!=null) out.push({t,e:e/step});
+    if(i%8===0){ onProg&&onProg(i/n); await new Promise(r=>setTimeout(r,0)); }
+  }
+  if(v) v.remove();
+  return out;
+}
+function smoothE(out){return out.map((p,i)=>{let s=0,c=0;for(let k=-1;k<=1;k++){const q=out[i+k];if(q){s+=q.e;c++;}}return {t:p.t,e:s/c};});}
+function setBar(id,p){const b=$(id); if(p==null){b.hidden=true; b.firstElementChild.style.width='0'; return;} b.hidden=false; b.firstElementChild.style.width=(p*100).toFixed(1)+'%';}
+async function scanEnergy(src){
+  const long = src.kind==='video' && src.duration>20;
+  let out=null;
+  if(long){ $('#swPanel').hidden=false; $('#swTitle').textContent='この動画のスイング — 動きを解析中…'; $('#swBest').innerHTML='<span class="note">動画全体を早送りで解析しています。長い動画では1〜2分かかります。</span>'; $('#swTable').innerHTML=''; out=await scanPlay(src,0,src.duration,4,p=>setBar('#scanBar',p)); }
+  if(!out){ const step= long ? Math.max(1/15, src.duration/3000) : Math.max(1/src.fps, src.duration/600); out=await scanSeek(src,0,src.duration,step,p=>setBar('#scanBar',p)); }
+  src.energy=smoothE(out);
+  setBar('#scanBar',null);
+}
+function estimatePhases(src){
+  const E=src.energy; if(E.length<5) return false;
+  let pk=0; E.forEach((p,i)=>{if(p.e>E[pk].e)pk=i;});
+  const max=E[pk].e; if(max<=0) return false;
+  const thr=max*.18;
+  let a=pk; while(a>0 && E[a-1].e>thr) a--;
+  let b=pk; while(b<E.length-1 && E[b+1].e>thr) b++;
+  // quiet period before the swing: search back for the load (smaller bump)
+  let st=a; while(st>0 && E[st-1].e<=E[st].e*1.15 && E[a].t-E[st-1].t<2.5) st--;
+  const snap=t=>Math.round(t*src.fps)/src.fps;
+  src.phases.impact=snap(E[pk].t); src.est.impact=true;
+  src.phases.top=snap(E[a].t); src.est.top=true;
+  src.phases.finish=snap(E[b].t); src.est.finish=true;
+  if(src.phases.stance==null||src.est.stance){src.phases.stance=snap(Math.max(0,E[a].t-1)); src.est.stance=true;}
+  return true;
+}
+
+/* ---------- state ---------- */
+const S = {A:null, B:null, playing:false, speed:0.25, tool:'none', pending:null, loop:false, grid:false, trailAll:false, history:[]};
+const cA=$('#canvasA'), cB=$('#canvasB'), xA=cA.getContext('2d'), xB=cB.getContext('2d');
+const tl=$('#tl'), xT=tl.getContext('2d');
+
+function setSourceA(src){
+  pause(); S.A=src; cA.width=src.W; cA.height=src.H; S.history=[]; SW.busy=false; renderSwings();
+  $('#srcName').textContent=src.name.length>22?src.name.slice(0,20)+'…':src.name;
+  $('#tagA').textContent = S.B?'A':(src.kind==='demo'?'DEMO':'A');
+  $('#fpsSel').value=String(src.fps); $('#fpsSel').disabled = src.kind==='demo';
+  $('#slowSel').value=String(src.slow); $('#slowSel').disabled = src.kind==='demo';
+  setTime(0); refreshPanel(); renderChecklist(); updateSaveBar(); renderArchive();
+}
+function setSourceB(src){
+  pause(); S.B=src; cB.width=src.W; cB.height=src.H; cB.hidden=false; $('#tagB').hidden=false; $('#tagA').textContent='A';
+  $('#stage').classList.add('compare'); $('#closeB').hidden=false; $('#compareBox').hidden=false;
+  $('#fpsSelB').value=String(src.fps);
+  syncB(); refreshPanel(); renderAll();
+}
+function closeB(){
+  if(S.B && S.B.el){S.B.el.pause(); S.B.el.remove();}
+  S.B=null; cB.hidden=true; $('#tagB').hidden=true; $('#stage').classList.remove('compare'); $('#closeB').hidden=true; $('#compareBox').hidden=true;
+  $('#tagA').textContent=S.A.kind==='demo'?'DEMO':'A'; renderAll();
+}
+
+/* ---------- time & playback ---------- */
+function frameDur(src){return 1/src.fps}
+function setTime(t){
+  const A=S.A; t=Math.max(0,Math.min(A.duration,t)); A.t=t;
+  if(A.kind==='video' && !S.playing) A.el.currentTime=Math.min(t,A.duration-0.001);
+  syncB(); renderAll();
+}
+function stepFrame(n){ pause(); const f=frameDur(S.A); setTime(Math.round(S.A.t/f+n)*f); }
+function bTime(){
+  const A=S.A,B=S.B; if(!B) return 0;
+  if(A.phases.impact!=null && B.phases.impact!=null) return A.t-A.phases.impact+B.phases.impact+B.offset;
+  return A.t+B.offset;
+}
+function syncB(force){
+  const B=S.B; if(!B) return;
+  const t=Math.max(0,Math.min(B.duration,bTime())); B.t=t;
+  if(B.kind==='video'){
+    if(S.playing && t>0 && t<B.duration){
+      B.el.playbackRate=S.speed;
+      if(B.el.paused) B.el.play().catch(()=>{});
+      if(Math.abs(B.el.currentTime-t)>0.06) B.el.currentTime=t;
+    } else { if(!B.el.paused) B.el.pause(); if(force!==false && Math.abs(B.el.currentTime-t)>0.0005) B.el.currentTime=Math.min(t,B.duration-0.001); }
+  }
+}
+function loopRange(){
+  const p=S.A.phases, st=p.top!=null?p.top-0.3:null, en=p.finish!=null?p.finish+0.2:null;
+  return [Math.max(0,st??0), Math.min(S.A.duration, en??S.A.duration)];
+}
+let last=0;
+function play(){
+  const A=S.A; if(S.playing) return;
+  if(S.loop){const [a,b]=loopRange(); if(A.t<a||A.t>=b-0.01) setTime(a);}
+  else if(A.t>=A.duration-0.01) setTime(0);
+  S.playing=true; $('#play').textContent='停止';
+  if(A.kind==='video'){A.el.playbackRate=S.speed; A.el.play().catch(()=>{S.playing=false;$('#play').textContent='再生';});}
+  last=performance.now(); requestAnimationFrame(tick);
+}
+function pause(){
+  if(!S.playing) return; S.playing=false; $('#play').textContent='再生';
+  const A=S.A; if(A.kind==='video'){A.el.pause(); A.t=A.el.currentTime;}
+  if(S.B && S.B.kind==='video') S.B.el.pause();
+  syncB(); renderAll();
+}
+function tick(now){
+  if(!S.playing) return;
+  const A=S.A; const dt=(now-last)/1000; last=now;
+  if(A.kind==='demo') A.t+=dt*S.speed; else A.t=A.el.currentTime;
+  if(S.loop){const [a,b]=loopRange(); if(A.t>=b){ A.t=a; if(A.kind==='video') A.el.currentTime=a; }}
+  else if(A.t>=A.duration || (A.kind==='video'&&A.el.ended)){A.t=A.duration; renderAll(); pause(); return;}
+  syncB(); renderAll(); requestAnimationFrame(tick);
+}
+
+/* ---------- rendering ---------- */
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function angleAt(a,v,c){const u={x:a.x-v.x,y:a.y-v.y},w={x:c.x-v.x,y:c.y-v.y};const d=(u.x*w.x+u.y*w.y)/(Math.hypot(u.x,u.y)*Math.hypot(w.x,w.y)||1);return Math.acos(Math.max(-1,Math.min(1,d)))*180/Math.PI}
+function pxPerCm(src){return src.scale?dist(src.scale.a,src.scale.b)/src.scale.cm:null}
+function label(ctx,text,x,y,u,col){
+  ctx.font=`600 ${13*u}px "JetBrains Mono",monospace`; const w=ctx.measureText(text).width;
+  ctx.fillStyle='rgba(8,12,10,.78)'; ctx.fillRect(x-3*u,y-13*u,w+6*u,17*u);
+  ctx.fillStyle=col||'#F2B705'; ctx.fillText(text,x,y);
+}
+function drawGrid(ctx,W,H){
+  ctx.save(); ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=Math.max(1,W/1000);
+  for(let i=1;i<8;i++){ctx.beginPath();ctx.moveTo(W*i/8,0);ctx.lineTo(W*i/8,H);ctx.stroke();}
+  for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(0,H*i/6);ctx.lineTo(W,H*i/6);ctx.stroke();}
+  ctx.restore();
+}
+function drawAnn(ctx,src,a,u,preview){
+  const ppc=pxPerCm(src), M='#F2B705';
+  ctx.save(); ctx.lineWidth=2.5*u; ctx.strokeStyle=M; ctx.fillStyle=M; ctx.lineCap='round';
+  if(preview) ctx.setLineDash([6*u,4*u]);
+  const dotp=p=>{ctx.beginPath();ctx.arc(p.x,p.y,4*u,0,Math.PI*2);ctx.fill();};
+  if(a.type==='line'||a.type==='scale'){
+    if(a.type==='scale'){ctx.strokeStyle='#8FE3B8';ctx.fillStyle='#8FE3B8';ctx.setLineDash([8*u,5*u]);}
+    ctx.beginPath();ctx.moveTo(a.a.x,a.a.y);ctx.lineTo(a.b.x,a.b.y);ctx.stroke(); dotp(a.a); dotp(a.b);
+    const L=dist(a.a,b0(a)); const mx=(a.a.x+a.b.x)/2+8*u,my=(a.a.y+a.b.y)/2-8*u;
+    const ang=Math.abs(Math.atan2(-(a.b.y-a.a.y),a.b.x-a.a.x)*180/Math.PI); const tilt=ang>90?180-ang:ang;
+    if(a.type==='scale') label(ctx,`基準 ${a.cm??$('#scaleCm').value}cm`,mx,my,u,'#8FE3B8');
+    else label(ctx,(ppc?`${(L/ppc).toFixed(1)}cm · `:'')+`水平から${tilt.toFixed(0)}°`,mx,my,u);
+  } else if(a.type==='circle'){
+    ctx.beginPath();ctx.arc(a.a.x,a.a.y,dist(a.a,a.b),0,Math.PI*2);ctx.stroke(); dotp(a.a);
+  } else if(a.type==='angle'){
+    const p=a.pts; ctx.beginPath();ctx.moveTo(p[0].x,p[0].y);ctx.lineTo(p[1].x,p[1].y); if(p[2])ctx.lineTo(p[2].x,p[2].y);ctx.stroke(); p.forEach(dotp);
+    if(p[2]){
+      const deg=angleAt(p[0],p[1],p[2]); const a1=Math.atan2(p[0].y-p[1].y,p[0].x-p[1].x), a2=Math.atan2(p[2].y-p[1].y,p[2].x-p[1].x);
+      let d=a2-a1; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI;
+      ctx.setLineDash([]); ctx.lineWidth=1.5*u; ctx.beginPath(); ctx.arc(p[1].x,p[1].y,22*u,a1,a1+d,d<0); ctx.stroke();
+      label(ctx,`${deg.toFixed(0)}°`,p[1].x+14*u,p[1].y-14*u,u);
+    }
+  }
+  ctx.restore();
+}
+function b0(a){return a.b}
+function drawTracks(ctx,src,u){
+  const t=src.t, f=frameDur(src);
+  for(const k in src.tracks){
+    const pts=src.tracks[k].slice().sort((a,b)=>a.t-b.t); if(!pts.length) continue;
+    const vis=S.trailAll?pts:pts.filter(p=>p.t<=t+f/2);
+    if(!vis.length) continue;
+    const col=TRACKS[k].color;
+    ctx.save(); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=2.5*u; ctx.lineJoin='round';
+    ctx.globalAlpha=.9; ctx.beginPath(); vis.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke();
+    vis.forEach(p=>{const cur=Math.abs(p.t-t)<f/2; ctx.globalAlpha=cur?1:.75; ctx.beginPath(); ctx.arc(p.x,p.y,(cur?6:3.2)*u,0,Math.PI*2); ctx.fill(); if(cur){ctx.strokeStyle='#fff';ctx.lineWidth=1.5*u;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=2.5*u;}});
+    ctx.restore();
+  }
+}
+function phaseAt(src){
+  const f=frameDur(src); const hit=PHASES.find(p=>src.phases[p.id]!=null && Math.abs(src.phases[p.id]-src.t)<f/2);
+  return hit;
+}
+function renderSource(ctx,src,withAnn){
+  const W=ctx.canvas.width,H=ctx.canvas.height, u=W/900;
+  src.render(ctx,src.t);
+  if(S.grid) drawGrid(ctx,W,H);
+  if(withAnn){
+    if(src.scale) drawAnn(ctx,src,{type:'scale',...src.scale},u);
+    src.anns.forEach(a=>drawAnn(ctx,src,a,u));
+    drawTracks(ctx,src,u);
+    if(S.pending) drawAnn(ctx,src,S.pending,u,true);
+  }
+  const ph=phaseAt(src);
+  if(ph){ ctx.save(); const col=cv(ph.v); ctx.fillStyle=col; ctx.fillRect(0,H-6*u,W,6*u); label(ctx,ph.label,12*u,H-16*u,u*1.2,'#fff'); ctx.restore(); }
+}
+function renderAll(){
+  if(!S.A) return;
+  renderSource(xA,S.A,true);
+  if(S.B) renderSource(xB,S.B,false);
+  const f=frameDur(S.A);
+  $('#clkT').textContent=S.A.t.toFixed(3)+' s';
+  $('#clkF').innerHTML='<small>コマ</small> '+Math.round(S.A.t/f);
+  drawTimeline();
+  if(S.B) $('#bInfo').textContent = `B の現在位置 ${S.B.t.toFixed(3)} s` + (S.B.offset?` (調整 ${S.B.offset>0?'+':''}${Math.round(S.B.offset*S.B.fps)}コマ)`:'');
+}
+function drawTimeline(){
+  const dpr=window.devicePixelRatio||1, W=tl.clientWidth, H=108;
+  if(tl.width!==Math.round(W*dpr)){tl.width=Math.round(W*dpr); tl.height=H*dpr;}
+  const x=xT; x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,W,H);
+  const A=S.A, pad=4, top=30, bot=H-14, X=t=>pad+(W-pad*2)*t/A.duration;
+  x.fillStyle=cv('--surface-2'); x.fillRect(pad,top,W-pad*2,bot-top);
+  // loop range
+  if(S.loop){const [a,b]=loopRange(); x.fillStyle=cv('--accent-soft'); x.fillRect(X(a),top,X(b)-X(a),bot-top);}
+  const E=A.energy;
+  if(E.length>1){
+    const max=Math.max(...E.map(p=>p.e))||1; const Y=e=>bot-(bot-top-4)*e/max;
+    x.beginPath(); x.moveTo(X(E[0].t),bot); E.forEach(p=>x.lineTo(X(p.t),Y(p.e))); x.lineTo(X(E[E.length-1].t),bot); x.closePath();
+    x.globalAlpha=.28; x.fillStyle=cv('--accent'); x.fill(); x.globalAlpha=1;
+    x.beginPath(); E.forEach((p,i)=>i?x.lineTo(X(p.t),Y(p.e)):x.moveTo(X(p.t),Y(p.e))); x.strokeStyle=cv('--accent'); x.lineWidth=1.5; x.stroke();
+  } else {
+    x.fillStyle=cv('--muted'); x.font='12px "Noto Sans JP",sans-serif'; x.fillText('動きの量を解析中…',pad+8,(top+bot)/2+4);
+  }
+  // track ticks
+  for(const k in A.tracks){ x.fillStyle=TRACKS[k].color; A.tracks[k].forEach(p=>x.fillRect(X(p.t)-1,bot+3,2,5)); }
+  // phases
+  x.font='600 11px "Noto Sans JP",sans-serif';
+  const placed=[];
+  PHASES.forEach(p=>{const t=A.phases[p.id]; if(t==null) return; if(A.duration>20&&p.id!=='impact') return; const c=cv(p.v); const xx=X(t);
+    x.strokeStyle=c; x.lineWidth=2; if(A.est[p.id]) x.setLineDash([3,3]); x.beginPath(); x.moveTo(xx,top); x.lineTo(xx,bot); x.stroke(); x.setLineDash([]);
+    x.fillStyle=c; const lbl=p.label.replace(/[（(].*$/,'').replace('踏み込み足の着地','着地'); const w=x.measureText(lbl).width; const lx=Math.min(Math.max(xx-w/2,pad),W-pad-w); let row=0; while(placed.some(q=>q.row===row&&lx<q.r+6&&lx+w>q.l-6)&&row<2) row++; placed.push({l:lx,r:lx+w,row}); x.fillText(lbl,lx,11+row*12);
+  });
+  // detected swings
+  if(A.swings&&A.swings.length>1){ const best=A.swings.find(w=>w.rank===1);
+    A.swings.forEach(w=>{ if(w.off) return; const xx=X(w.impact??w.t); x.fillStyle= w===best?cv('--series'):cv('--muted'); x.beginPath(); x.moveTo(xx-4,bot+10); x.lineTo(xx+4,bot+10); x.lineTo(xx,bot+4); x.fill(); }); }
+  // playhead
+  const px=X(A.t); x.strokeStyle=cv('--ink'); x.lineWidth=2; x.beginPath(); x.moveTo(px,top-4); x.lineTo(px,bot+2); x.stroke();
+  x.fillStyle=cv('--ink'); x.beginPath(); x.moveTo(px-5,top-8); x.lineTo(px+5,top-8); x.lineTo(px,top-2); x.fill();
+  // ticks seconds
+  x.fillStyle=cv('--muted'); x.font='10px "JetBrains Mono",monospace';
+  const stepS=A.duration>240?30:A.duration>90?10:A.duration>20?5:A.duration>6?1:0.5;
+  for(let s=0;s<=A.duration+1e-6;s+=stepS){const xx=X(s); x.fillRect(xx,bot,1,3); if(s>0&&xx<W-24) x.fillText(s.toFixed(stepS<1?1:0),xx+2,H-1);}
+}
+
+/* ---------- panel ---------- */
+function realDt(src,dt){return dt/src.slow}
+function fmtS(s){return s.toFixed(3)}
+function refreshPanel(){
+  const A=S.A; if(!A) return;
+  const f=1/A.fps/A.slow;
+  $('#precNote').textContent=`1コマ ≈ ${(f*1000).toFixed(1)} ms(計測の最小単位)。` + (A.kind==='demo'?'デモ映像は 60fps・等倍です。':'高速度撮影なら計測精度が上がります。');
+  // phases
+  $('#phases').innerHTML=PHASES.map(p=>{const t=A.phases[p.id];
+    return `<div class="ph"><span class="dot" style="background:var(${p.v})"></span><span>${p.label}</span>
+      <span class="t ${A.est[p.id]&&t!=null?'est':''}">${t!=null?t.toFixed(3)+' s':'—'}</span>
+      <span class="b"><button data-set="${p.id}">設定</button><button data-go="${p.id}" ${t==null?'disabled':''} aria-label="${p.label}へ移動">移動</button></span></div>`}).join('');
+  // timing
+  const P=A.phases, d=(a,b)=>(P[a]!=null&&P[b]!=null&&P[b]>P[a])?realDt(A,P[b]-P[a]):null;
+  const card=(k,v,sub,wide)=>`<div class="metric${wide?' wide':''}"><span class="k">${k}</span><span class="v">${v==null?'—':fmtS(v)+'<small>秒</small>'}</span>${sub?`<span class="s">${sub}</span>`:''}</div>`;
+  const sw=d('top','impact');
+  let swNote='一般に 0.15〜0.20 秒前後と言われます(始動の取り方で変わります)';
+  $('#timing').innerHTML =
+    card('スイング時間(始動→インパクト)',sw, sw!=null?`${Math.round(sw/f)}コマ · ${swNote}`:'「トップ」と「インパクト」を設定すると表示', true)+
+    card('着地→インパクト',d('plant','impact'))+
+    card('構え→インパクト',d('stance','impact'))+
+    card('インパクト→フィニッシュ',d('impact','finish'))+
+    card('始動→着地',d('top','plant'));
+  // tracking metrics
+  const ppc=pxPerCm(A);
+  const speeds=k=>{const pts=A.tracks[k].slice().sort((a,b)=>a.t-b.t); const out=[]; for(let i=1;i<pts.length;i++){const dt=realDt(A,pts[i].t-pts[i-1].t); if(dt<=0) continue; out.push({t:(pts[i].t+pts[i-1].t)/2, v:dist(pts[i],pts[i-1])/ppc/dt*0.036});} return out;};
+  let html='';
+  if(!ppc){
+    html=`<div class="metric wide"><span class="k">速度・移動量</span><span class="s">「描画・追跡」タブの <b>基準長</b> でバットなど長さの分かる物に線を引くと、cm・km/h で算出します。</span></div>`;
+  } else {
+    const vb=speeds('bat'), vg=speeds('grip');
+    const mx=a=>a.length?Math.max(...a.map(s=>s.v)):null;
+    const atImp=a=>{if(!a.length||P.impact==null) return null; let best=a[0]; a.forEach(s=>{if(Math.abs(s.t-P.impact)<Math.abs(best.t-P.impact)) best=s;}); return Math.abs(best.t-P.impact)<0.05*A.slow?best.v:null;};
+    const kmh=(k,v,sub,wide)=>`<div class="metric${wide?' wide':''}"><span class="k">${k}</span><span class="v">${v==null?'—':v.toFixed(0)+'<small>km/h</small>'}</span>${sub?`<span class="s">${sub}</span>`:''}</div>`;
+    html+=kmh('バット先端 最大速度',mx(vb), vb.length?`追跡 ${A.tracks.bat.length}点`:'バット先端を追跡すると表示');
+    html+=kmh('インパクト付近の速度',atImp(vb));
+    html+=kmh('グリップ 最大速度',mx(vg));
+    const hp=A.tracks.head;
+    if(hp.length>1){const xs=hp.map(p=>p.x),ys=hp.map(p=>p.y); const dx=(Math.max(...xs)-Math.min(...xs))/ppc, dy=(Math.max(...ys)-Math.min(...ys))/ppc;
+      html+=`<div class="metric"><span class="k">頭の移動幅</span><span class="v">${dx.toFixed(0)}<small>cm 横</small> ${dy.toFixed(0)}<small>cm 縦</small></span></div>`;}
+    else html+=`<div class="metric"><span class="k">頭の移動幅</span><span class="v">—</span><span class="s">頭を追跡すると表示</span></div>`;
+    html+=`<p class="note" style="grid-column:1/-1">カメラに対して横方向の動きだけを測るため、奥行き方向の速度は含まれません。${A.kind==='demo'?'デモ映像にはサンプルの追跡点が入っています。':''}</p>`;
+  }
+  $('#trackMetrics').innerHTML=html;
+  const s=A.scale; $('#scaleInfo').textContent = s?`基準線 ${dist(s.a,s.b).toFixed(0)}px = ${s.cm}cm(1cm ≈ ${(dist(s.a,s.b)/s.cm).toFixed(2)}px)`:'まだ基準線がありません。バットのグリップエンドから先端まで線を引くと、上の「使用バット」の長さで計測します。';
+}
+$('#phases').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; const A=S.A;
+  if(b.dataset.set){ A.phases[b.dataset.set]=A.t; A.est[b.dataset.set]=false; refreshPanel(); renderAll(); toast(`${PHASES.find(p=>p.id===b.dataset.set).label}を ${A.t.toFixed(3)} 秒に設定しました`); }
+  if(b.dataset.go){ pause(); setTime(A.phases[b.dataset.go]); }
+});
+$('#autoBtn').addEventListener('click',()=>{
+  if(!S.A.energy.length){toast('動きの量を解析中です。少し待ってからもう一度押してください');return;}
+  if(estimatePhases(S.A)){refreshPanel(); renderAll(); toast('インパクト・始動・フィニッシュを推定しました。点線は推定値です');}
+  else toast('動きのピークが見つかりませんでした。手動で設定してください');
+});
+$('#fpsSel').addEventListener('change',e=>{S.A.fps=+e.target.value; if(S.A.kind==='video'){S.A.energy=[]; scanEnergy(S.A).then(()=>{renderAll();});} refreshPanel(); renderAll();});
+$('#slowSel').addEventListener('change',e=>{S.A.slow=+e.target.value; refreshPanel();});
+$('#fpsSelB').addEventListener('change',e=>{if(S.B){S.B.fps=+e.target.value; renderAll();}});
+$('#bMinus').addEventListener('click',()=>{if(!S.B)return; S.B.offset+=1/S.B.fps; syncB(); renderAll();});
+$('#bPlus').addEventListener('click',()=>{if(!S.B)return; S.B.offset-=1/S.B.fps; syncB(); renderAll();});
+
+/* ---------- tools ---------- */
+const HINTS={
+  none:'再生・コマ送りで映像を確認します。描画した線や追跡点はそのまま表示されます。',
+  line:'ドラッグで直線を引きます。水平からの傾きを表示し、基準長があれば長さ(cm)も表示します。肩や腰のラインの傾き確認に。',
+  angle:'3点を順にクリックします(端 → 頂点 → 端)。前足の膝・後ろ肘・体幹の角度などに。',
+  circle:'中心からドラッグで円を描きます。頭の位置の目安を囲んで、スイング中にはみ出さないかを確認できます。',
+  track:'追跡する部位をクリックすると点が記録され、自動で次のコマに進みます。インパクト前後を連続でクリックすると軌道と速度が出ます。',
+  scale:'長さの分かる物(バットの両端など)をドラッグで結びます。下の欄に実際の長さを入れると、cm・km/h で計測できます。',
+};
+function setTool(t){
+  S.tool=t; S.pending=null;
+  $$('#tools button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
+  $('#toolHint').textContent=HINTS[t]; cA.classList.toggle('tool-on',t!=='none'); renderAll();
+}
+$('#tools').addEventListener('click',e=>{const b=e.target.closest('button'); if(b) setTool(b.dataset.tool);});
+function pos(e){const r=cA.getBoundingClientRect(); return {x:(e.clientX-r.left)*cA.width/r.width, y:(e.clientY-r.top)*cA.height/r.height};}
+let dragging=false;
+cA.addEventListener('pointerdown',e=>{
+  const A=S.A, p=pos(e), T=S.tool; if(T==='none') return;
+  pause(); e.preventDefault();
+  if(T==='line'||T==='circle'||T==='scale'){S.pending={type:T,a:p,b:p}; dragging=true; cA.setPointerCapture(e.pointerId);}
+  else if(T==='angle'){
+    if(!S.pending) S.pending={type:'angle',pts:[p,p]};
+    else { S.pending.pts[S.pending.pts.length-1]=p; if(S.pending.pts.length===3){A.anns.push({type:'angle',pts:S.pending.pts,t:A.t}); S.history.push({kind:'ann'}); S.pending=null; renderAll(); return;} S.pending.pts.push(p);}
+  }
+  else if(T==='track'){
+    const k=$('#trackTarget').value, f=frameDur(A), arr=A.tracks[k];
+    const i=arr.findIndex(q=>Math.abs(q.t-A.t)<f/2); const pt={t:+A.t.toFixed(5),x:p.x,y:p.y};
+    if(i>=0) arr[i]=pt; else arr.push(pt);
+    S.history.push({kind:'track',k,t:pt.t}); refreshPanel();
+    const n=+$('#autoAdv').value; if(n) stepFrame(n); else renderAll();
+    return;
+  }
+  renderAll();
+});
+cA.addEventListener('pointermove',e=>{
+  if(!S.pending) return; const p=pos(e);
+  if(dragging) S.pending.b=p; else if(S.pending.type==='angle') S.pending.pts[S.pending.pts.length-1]=p;
+  renderAll();
+});
+cA.addEventListener('pointerup',()=>{
+  if(!dragging||!S.pending) return; dragging=false; const A=S.A, P=S.pending;
+  if(dist(P.a,P.b)>6){
+    if(P.type==='scale'){A.scale={a:P.a,b:P.b,cm:+$('#scaleCm').value||BAT.length}; S.history.push({kind:'scale'}); refreshPanel(); toast('基準線を設定しました');}
+    else {A.anns.push({...P,t:A.t}); S.history.push({kind:'ann'});}
+  }
+  S.pending=null; renderAll();
+});
+$('#scaleCm').addEventListener('input',e=>{const v=+e.target.value; if(S.A.scale&&v>0){S.A.scale.cm=v; refreshPanel(); renderAll();}});
+$('#undoBtn').addEventListener('click',()=>{
+  const A=S.A; if(S.pending){S.pending=null;renderAll();return;}
+  const h=S.history.pop();
+  if(!h){ if(A.anns.length) A.anns.pop(); else {toast('戻せる操作がありません');return;} }
+  else if(h.kind==='ann') A.anns.pop();
+  else if(h.kind==='scale') A.scale=null;
+  else if(h.kind==='track'){const arr=A.tracks[h.k]; const i=arr.findIndex(q=>q.t===h.t); if(i>=0) arr.splice(i,1);}
+  refreshPanel(); renderAll();
+});
+$('#clearTrack').addEventListener('click',()=>{const k=$('#trackTarget').value; S.A.tracks[k]=[]; refreshPanel(); renderAll(); toast(`${TRACKS[k].label}の追跡を消去しました`);});
+$('#clearAll').addEventListener('click',()=>{const A=S.A; A.anns=[]; A.scale=null; A.tracks={bat:[],grip:[],head:[]}; S.history=[]; refreshPanel(); renderAll(); toast('描画をすべて消去しました');});
+$('#gridChk').addEventListener('change',e=>{S.grid=e.target.checked; renderAll();});
+$('#trailAll').addEventListener('change',e=>{S.trailAll=e.target.checked; renderAll();});
+
+/* ---------- transport ---------- */
+$('#play').addEventListener('click',()=>S.playing?pause():play());
+$('#prevF').addEventListener('click',()=>stepFrame(-1));
+$('#nextF').addEventListener('click',()=>stepFrame(1));
+$('#speeds').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; S.speed=+b.dataset.s;
+  $$('#speeds button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  if(S.A.kind==='video') S.A.el.playbackRate=S.speed; if(S.B&&S.B.kind==='video') S.B.el.playbackRate=S.speed;});
+$('#loopBtn').addEventListener('click',e=>{S.loop=!S.loop; e.currentTarget.setAttribute('aria-pressed',String(S.loop)); e.currentTarget.classList.toggle('primary',S.loop); renderAll();});
+let tlDrag=false;
+function tlSeek(e){const r=tl.getBoundingClientRect(); const t=(e.clientX-r.left-4)/(r.width-8)*S.A.duration; setTime(t);}
+tl.addEventListener('pointerdown',e=>{pause(); tlDrag=true; tl.setPointerCapture(e.pointerId); tlSeek(e);});
+tl.addEventListener('pointermove',e=>{if(tlDrag) tlSeek(e);});
+tl.addEventListener('pointerup',()=>{tlDrag=false; const f=frameDur(S.A); setTime(Math.round(S.A.t/f)*f);});
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('input,textarea,select')) return;
+  if(e.code==='Space'){e.preventDefault(); S.playing?pause():play();}
+  else if(e.key==='ArrowLeft'){e.preventDefault(); stepFrame(e.shiftKey?-5:-1);}
+  else if(e.key==='ArrowRight'){e.preventDefault(); stepFrame(e.shiftKey?5:1);}
+  else if(e.key==='Escape'){S.pending=null; renderAll();}
+});
+
+/* ---------- tabs ---------- */
+$$('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  $$('.tabs button').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  ['measure','draw','check'].forEach(id=>$('#tab-'+id).hidden = id!==b.dataset.tab);
+  if(b.dataset.tab==='measure') refreshPanel();
+}));
+
+/* ---------- checklist ---------- */
+function renderChecklist(){
+  const A=S.A; if(!A) return;
+  $('#checklist').innerHTML=CHECKS.map((c,i)=>`<div class="ci"><span>${c}</span><span class="seg" data-i="${i}">
+  <button data-v="good" aria-pressed="${A.checks[i]==='good'}" aria-label="できている">◯</button>
+  <button data-v="mid" aria-pressed="${A.checks[i]==='mid'}" aria-label="もう少し">△</button>
+  <button data-v="bad" aria-pressed="${A.checks[i]==='bad'}" aria-label="課題">×</button></span></div>`).join('');
+  $('#memo').value=A.memo||'';
+}
+$('#checklist').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; const g=b.parentElement, i=g.dataset.i;
+  const on=b.getAttribute('aria-pressed')!=='true'; g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));
+  if(on){b.setAttribute('aria-pressed','true'); S.A.checks[i]=b.dataset.v;} else delete S.A.checks[i];});
+$('#memo').addEventListener('input',e=>{S.A.memo=e.target.value;});
+function buildReport(){
+  const A=S.A, P=A.phases, d=(a,b)=>(P[a]!=null&&P[b]!=null&&P[b]>P[a])?realDt(A,P[b]-P[a]).toFixed(3)+' 秒':'未計測';
+  const mark={good:'◯',mid:'△',bad:'×'};
+  const lines=[`■ スイング分析(${A.name})`, `撮影 ${A.fps}fps${A.slow>1?` / 1/${A.slow}スロー`:''}`, '',
+    '【タイミング】', `スイング時間(始動→インパクト): ${d('top','impact')}`, `着地→インパクト: ${d('plant','impact')}`, `構え→インパクト: ${d('stance','impact')}`, `インパクト→フィニッシュ: ${d('impact','finish')}`, ''];
+  const tm=$('#trackMetrics').querySelectorAll('.metric');
+  if(pxPerCm(A)){lines.push('【追跡】'); tm.forEach(m=>{lines.push(`${m.querySelector('.k').textContent}: ${m.querySelector('.v').textContent.replace(/\s+/g,' ')}`);}); lines.push('');}
+  lines.push('【チェック】'); CHECKS.forEach((c,i)=>lines.push(`${mark[A.checks[i]]||'-'} ${c}`));
+  if(A.memo) lines.push('', '【メモ】', A.memo);
+  return lines.join('\n');
+}
+$('#copyReport').addEventListener('click',()=>{
+  refreshPanel(); const text=buildReport(); const out=$('#reportOut');
+  navigator.clipboard.writeText(text).then(()=>{out.hidden=true; toast('コピーしました');}).catch(()=>{out.hidden=false; out.value=text; out.style.minHeight='220px'; out.focus(); out.select(); toast('自動コピーできませんでした。選択されたテキストをコピーしてください');});
+});
+
+/* ---------- bat spec ---------- */
+const BAT={length:74, weight:500};
+try{ const b=JSON.parse(localStorage.getItem('swinglab-bat')); if(b&&b.length) Object.assign(BAT,b); }catch(_){}
+function syncBatInputs(){ $('#batLen').value=BAT.length; $('#batWt').value=BAT.weight; if(!S.A||!S.A.scale) $('#scaleCm').value=BAT.length; }
+['#batLen','#batWt'].forEach(id=>$(id).addEventListener('change',()=>{
+  const l=+$('#batLen').value, w=+$('#batWt').value; if(l>0) BAT.length=l; if(w>0) BAT.weight=w;
+  try{localStorage.setItem('swinglab-bat',JSON.stringify(BAT));}catch(_){}
+  if(!S.A.scale) $('#scaleCm').value=BAT.length;
+}));
+syncBatInputs();
+
+/* ---------- multi-swing detection, ranking & keeping the best ---------- */
+const SW={busy:false, confirm:null};
+function detectSwings(src){
+  const E=src.energy; if(E.length<10) return [];
+  const vals=E.map(p=>p.e).sort((a,b)=>a-b); const med=vals[Math.floor(vals.length*.5)], p98=vals[Math.floor(vals.length*.98)];
+  if(!(p98>med*1.6)) return [];
+  const thr=med+0.35*(p98-med); const peaks=[];
+  for(let i=1;i<E.length-1;i++) if(E[i].e>thr && E[i].e>=E[i-1].e && E[i].e>=E[i+1].e) peaks.push(i);
+  const merged=[];
+  peaks.forEach(i=>{const l=merged[merged.length-1]; if(l!=null && E[i].t-E[l].t<1.5){ if(E[i].e>E[l].e) merged[merged.length-1]=i; } else merged.push(i);});
+  return merged.map((i,k)=>({n:k+1, t:E[i].t, coarse:E[i].e}));
+}
+async function refineSwing(src,w){
+  const t0=Math.max(0,w.t-1.3), t1=Math.min(src.duration,w.t+1.0);
+  const rate=Math.min(1,50/src.fps);
+  let out=await scanPlay(src,t0,t1,rate);
+  if(!out) out=await scanSeek(src,t0,t1,1/src.fps);
+  const E=smoothE(out); if(E.length<5) return;
+  let pk=0; E.forEach((p,i)=>{ if(Math.abs(p.t-w.t)<0.6 && p.e>E[pk].e) pk=i; });
+  let base=Infinity; for(let i=0;i<=pk;i++) base=Math.min(base,E[i].e);
+  const thr=base+0.2*(E[pk].e-base);
+  let a=pk; while(a>0 && E[a-1].e>thr) a--;
+  let b=pk; while(b<E.length-1 && E[b+1].e>thr) b++;
+  const snap=t=>Math.round(t*src.fps)/src.fps;
+  w.impact=snap(E[pk].t); w.top=snap(E[a].t); w.finish=snap(E[b].t); w.peak=E[pk].e;
+  w.swingTime=(w.impact-w.top)/src.slow; w.refined=true;
+}
+function scoreSwings(src){
+  const R=src.swings.filter(w=>w.refined&&!w.off&&w.swingTime>0);
+  const maxPk=Math.max(...R.map(w=>w.peak),1e-9), minST=Math.min(...R.map(w=>w.swingTime));
+  R.forEach(w=>{ w.score=Math.round(100*(0.6*w.peak/maxPk+0.4*minST/w.swingTime)); });
+  const ranked=[...R.sort((a,b)=>b.score-a.score), ...src.swings.filter(w=>!w.refined&&!w.off).sort((a,b)=>b.coarse-a.coarse)];
+  src.swings.forEach(w=>w.rank=null); ranked.forEach((w,i)=>w.rank=i+1);
+}
+function applySwingPhases(src,w){
+  if(!w||!w.refined) return;
+  src.phases={stance:Math.max(0,+(w.top-0.8).toFixed(4)), top:w.top, impact:w.impact, finish:w.finish};
+  src.est={stance:true,top:true,impact:true,finish:true};
+}
+async function refineBatch(src,count){
+  const todo=src.swings.filter(w=>!w.refined&&!w.off).sort((a,b)=>b.coarse-a.coarse).slice(0,count);
+  for(let i=0;i<todo.length;i++){
+    if(S.A!==src) return;
+    $('#swTitle').textContent=`この動画のスイング — 上位候補を詳しく解析中 ${i+1}/${todo.length}`;
+    setBar('#swBar',i/todo.length); await refineSwing(src,todo[i]); scoreSwings(src); renderSwings();
+  }
+  setBar('#swBar',null);
+}
+async function analyzeSwings(src){
+  const ws=detectSwings(src);
+  if(ws.length<2){ src.swings=null; renderSwings();
+    if(src.duration>20 && ws.length===1){ src.swings=[ws[0]]; SW.busy=true; await refineSwing(src,ws[0]); SW.busy=false; applySwingPhases(src,ws[0]); src.swings=null; }
+    else estimatePhases(src);
+    return; }
+  src.swings=ws; SW.busy=true; renderSwings();
+  await refineBatch(src,5);
+  SW.busy=false;
+  const best=src.swings.find(w=>w.rank===1);
+  if(S.A===src && best){ applySwingPhases(src,best); src.curSwing=best.n; setTime(best.impact); toast(`${ws.length}本のスイングを検出しました。おすすめはスイング#${best.n}です`); }
+  renderSwings(); refreshPanel();
+}
+function renderSwings(){
+  const panel=$('#swPanel'), A=S.A;
+  if(!A||!A.swings||A.swings.length<2){ panel.hidden=true; return; }
+  panel.hidden=false;
+  const live=A.swings.filter(w=>!w.off);
+  const nR=A.swings.filter(w=>w.refined&&!w.off).length;
+  if(!SW.busy) $('#swTitle').textContent=`この動画のスイング — ${live.length}本`;
+  $('#swMore').hidden = SW.busy || !A.swings.some(w=>!w.refined&&!w.off);
+  const best=A.swings.find(w=>w.rank===1&&w.refined);
+  const bx=$('#swBest');
+  if(SW.confirm){
+    const w=A.swings.find(x=>x.n===SW.confirm);
+    const rate=Math.min(1,60/A.fps); const len=((w.finish+0.8)-(w.top-1.0))/rate;
+    bx.innerHTML=`<span>スイング#${w.n} の前後だけを切り出して、アーカイブに保存します。切り出しには約${Math.ceil(len)}秒かかります。元の動画はそのまま残ります。</span>
+      <div class="row"><button class="primary" id="swKeepGo">切り出して保存</button><button id="swKeepNo">やめる</button></div>`;
+    $('#swKeepGo').onclick=()=>keepSwing(w); $('#swKeepNo').onclick=()=>{SW.confirm=null; renderSwings();};
+  } else if(best){
+    const second=A.swings.find(w=>w.rank===2&&w.refined);
+    bx.innerHTML=`<div><div class="note">おすすめ(${live.length}本中 1位)</div><div class="big">スイング#${best.n}<small>総合 ${best.score}点 · スイング時間 ${best.swingTime.toFixed(3)}秒 · ${fmtClock(best.impact)}</small></div></div>
+      <div class="row"><button data-see="${best.n}">見る</button>${second?`<button id="swCmp">2位(#${second.n})と並べる</button>`:''}<button class="primary" data-keep="${best.n}">ベストを残す</button></div>`;
+    if(second) $('#swCmp').onclick=()=>compareSwings(best,second);
+  } else bx.innerHTML='<span class="note">候補を解析しています…</span>';
+  const maxC=Math.max(...A.swings.map(w=>w.coarse));
+  const rows=A.swings.slice().sort((a,b)=>(a.off-b.off)||((a.rank??999)-(b.rank??999)));
+  $('#swTable').innerHTML=`<thead><tr><th>順位</th><th>スイング</th><th class="n">時刻</th><th>振りの鋭さ</th><th class="n">スイング時間</th><th class="n">総合点</th><th></th></tr></thead><tbody>`+
+    rows.map(w=>`<tr class="${w.n===A.curSwing?'cur':''}${w.off?' off':''}">
+      <td>${w.off?'除外':w.rank===1&&w.refined?'<span class="rank1">1</span>':(w.rank??'—')}</td>
+      <td>#${w.n}</td><td class="n">${fmtClock(w.impact??w.t)}</td>
+      <td><span class="sbar"><i style="width:${Math.round(100*w.coarse/maxC)}%"></i></span>${Math.round(100*w.coarse/maxC)}</td>
+      <td class="n">${w.refined?w.swingTime.toFixed(3)+' 秒':'<span class="note">未解析</span>'}</td>
+      <td class="n">${w.refined&&w.score!=null?w.score:'—'}</td>
+      <td><button data-see="${w.n}">見る</button> ${w.off?`<button data-on="${w.n}">戻す</button>`:`<button data-keep="${w.n}">残す</button> <button data-off="${w.n}">除外</button>`}</td></tr>`).join('')+'</tbody>';
+}
+function fmtClock(t){const m=Math.floor(t/60), s=t-m*60; return `${m}:${s.toFixed(1).padStart(4,'0')}`;}
+async function seeSwing(n){
+  const A=S.A, w=A.swings.find(x=>x.n===n); if(!w) return;
+  if(!w.refined){ if(SW.busy) return toast('解析中です。少し待ってください'); SW.busy=true; renderSwings(); await refineSwing(A,w); scoreSwings(A); SW.busy=false; }
+  A.curSwing=n; applySwingPhases(A,w); pause(); setTime(w.impact??w.t); refreshPanel(); renderSwings();
+}
+async function compareSwings(a,b){
+  const A=S.A; toast('比較用に読み込んでいます…');
+  try{
+    const src=await loadVideoUrl(A.url,`${A.name} #${b.n}`);
+    Object.assign(src,{fps:A.fps, slow:A.slow, energy:A.energy});
+    applySwingPhases(src,b); applySwingPhases(A,a); A.curSwing=a.n;
+    if(S.B&&S.B.el) S.B.el.remove(); setSourceB(src); setTime(a.impact); refreshPanel(); renderSwings();
+    $('#tagA').textContent=`#${a.n}`; $('#tagB').textContent=`#${b.n}`;
+  }catch(e){ toast('比較用の読み込みに失敗しました'); }
+}
+async function recordClip(src,t0,t1,impactT,onProg){
+  if(typeof MediaRecorder==='undefined') throw new Error('このブラウザは動画の切り出しに対応していません。「アーカイブに保存」で動画全体を保存してください。');
+  const rate=Math.min(1,60/src.fps);
+  const v=await mkVideo(src.url); await seekVideo(v,t0);
+  const c=document.createElement('canvas'); c.width=src.W; c.height=src.H; const x=c.getContext('2d');
+  const tc=document.createElement('canvas'); tc.width=320; tc.height=Math.round(320*src.H/src.W); let thumb=null;
+  x.drawImage(v,0,0,c.width,c.height);
+  const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(m=>MediaRecorder.isTypeSupported(m));
+  if(!mime){ v.remove(); throw new Error('このブラウザは動画の切り出しに対応していません。'); }
+  const stream=c.captureStream(60);
+  const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:5e6}); const chunks=[];
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  const stopped=new Promise(r=>rec.onstop=r);
+  let stop=false;
+  const draw=()=>{ x.drawImage(v,0,0,c.width,c.height); if(!thumb && v.currentTime>=impactT){ tc.getContext('2d').drawImage(c,0,0,tc.width,tc.height); try{thumb=tc.toDataURL('image/jpeg',.72);}catch(_){} } };
+  if(v.requestVideoFrameCallback){ const cb=()=>{ draw(); if(!stop) v.requestVideoFrameCallback(cb); }; v.requestVideoFrameCallback(cb); }
+  else { const loop=()=>{ draw(); if(!stop) requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+  rec.start(250); v.playbackRate=rate;
+  await v.play();
+  await new Promise(res=>{ const chk=()=>{ onProg&&onProg(Math.min(1,(v.currentTime-t0)/(t1-t0))); if(v.currentTime>=t1||v.ended||v.paused) res(); else requestAnimationFrame(chk); }; chk(); });
+  stop=true; v.pause(); await new Promise(r=>setTimeout(r,120)); rec.stop(); await stopped; v.remove();
+  const type=mime.split(';')[0];
+  return {blob:new Blob(chunks,{type}), type, rate, thumb};
+}
+async function keepSwing(w){
+  const A=S.A; if(SW.busy) return; SW.confirm=null; SW.busy=true; renderSwings();
+  try{
+    if(!w.refined){ await refineSwing(A,w); scoreSwings(A); }
+    const t0=Math.max(0,w.top-1.0), t1=Math.min(A.duration,w.finish+0.8);
+    $('#swTitle').textContent=`スイング#${w.n} を切り出しています…`;
+    const clip=await recordClip(A,t0,t1,w.impact,p=>setBar('#swBar',p));
+    setBar('#swBar',null);
+    const r=clip.rate, map=t=>+((t-t0)/r).toFixed(4);
+    const ext=clip.type==='video/mp4'?'mp4':'webm';
+    const file=new File([clip.blob],`swing${w.n}.${ext}`,{type:clip.type});
+    const live=A.swings.filter(x=>!x.off).length;
+    const phases={stance:map(Math.max(t0,w.top-0.8)), top:map(w.top), impact:map(w.impact), finish:map(w.finish)};
+    const tracks={}; for(const k in A.tracks) tracks[k]=A.tracks[k].filter(p=>p.t>=t0&&p.t<=t1).map(p=>({...p,t:map(p.t)}));
+    const shotDate=A.shotDate||isoDate(new Date());
+    const rec={title:`${fmtDate(shotDate)} ベスト(${live}本中${w.rank??'-'}位)`, shotDate, fps:Math.round(A.fps*r), slow:A.slow/r,
+      phases, est:{stance:true,top:true,impact:true,finish:true}, tracks, anns:A.anns, scale:A.scale, checks:A.checks, memo:[`${live}本中 ${w.rank??'-'}位 · 総合${w.score??'-'}点 · 元の動画の ${fmtClock(w.impact)} 付近`, A.memo].filter(Boolean).join('\n'),
+      bat:A.bat||{...BAT}, session:{count:live, rank:w.rank, score:w.score, swingNo:w.n}};
+    if(AR.ready && AR.assets){
+      if(!AR.local && file.size>20*1024*1024) throw {code:'too_large'};
+      $('#swTitle').textContent='保存しています…';
+      const up=await AR.assets.upload(file,{type:clip.type});
+      const now=new Date().toISOString();
+      const tmp={...rec, W:A.W, H:A.H, slow:rec.slow, tracks:rec.tracks};
+      const summary=computeSummary({phases, slow:rec.slow, tracks:Object.assign({bat:[],grip:[],head:[]},tracks), scale:A.scale});
+      const body=JSON.parse(JSON.stringify({...tmp, createdAt:now, updatedAt:now, videoId:up.id, sizeBytes:up.sizeBytes, thumb:clip.thumb, duration:(t1-t0)/r, summary}));
+      await AR.db.collection('swings').doc().set(body);
+      toast(`スイング#${w.n} を切り出してアーカイブに保存しました(${(file.size/1048576).toFixed(1)}MB)`); refreshUsage();
+    } else {
+      const src=await loadVideoUrl(URL.createObjectURL(file), rec.title); Object.assign(src,rec,{file});
+      if(S.A&&S.A.el) S.A.el.remove(); setSourceA(src); await scanEnergy(src); refreshPanel(); renderAll();
+      toast('切り出した動画を開きました');
+    }
+  }catch(e){ toast(e&&e.code?errText(e):(e.message||'切り出しに失敗しました')); setBar('#swBar',null); }
+  finally{ SW.busy=false; renderSwings(); }
+}
+$('#swPanel').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||!S.A||!S.A.swings) return;
+  const A=S.A;
+  if(b.dataset.see) seeSwing(+b.dataset.see);
+  else if(b.dataset.keep){ if(SW.busy) return toast('解析中です。少し待ってください'); SW.confirm=+b.dataset.keep; renderSwings(); $('#swPanel').scrollIntoView({block:'nearest'}); }
+  else if(b.dataset.off){ A.swings.find(w=>w.n===+b.dataset.off).off=true; scoreSwings(A); renderSwings(); renderAll(); }
+  else if(b.dataset.on){ A.swings.find(w=>w.n===+b.dataset.on).off=false; scoreSwings(A); renderSwings(); renderAll(); }
+});
+$('#swMore').addEventListener('click',async()=>{ const A=S.A; if(SW.busy||!A.swings) return; SW.busy=true; renderSwings(); await refineBatch(A,5); SW.busy=false; renderSwings(); });
+
+/* ---------- files ---------- */
+let toastT; function toast(m){const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2600);}
+async function openFile(file,slot){
+  if(!file) return;
+  if(!file.type.startsWith('video/') && !/\.(mp4|mov|m4v|webm)$/i.test(file.name)){toast('動画ファイル(MP4・MOV など)を選んでください');return;}
+  toast('動画を読み込んでいます…');
+  try{
+    const src=await loadVideo(file);
+    if(slot==='B'){ if(S.B&&S.B.el) S.B.el.remove(); setSourceB(src); }
+    else { if(S.A&&S.A.el) S.A.el.remove(); setSourceA(src); }
+    toast('読み込みました。撮影フレームレートを設定してください');
+    await scanEnergy(src);
+    if(slot==='A') await analyzeSwings(src); else estimatePhases(src);
+    refreshPanel(); if(slot==='B') syncB(); renderAll();
+  }catch(err){toast(err.message);}
+}
+$('#fileA').addEventListener('change',e=>{openFile(e.target.files[0],'A'); e.target.value='';});
+$('#fileB').addEventListener('change',e=>{openFile(e.target.files[0],'B'); e.target.value='';});
+$('#closeB').addEventListener('click',closeB);
+$('#demoBtn').addEventListener('click',async()=>{ if(S.A&&S.A.el) S.A.el.remove(); const d=makeDemo(); setSourceA(d); await scanEnergy(d); estimatePhases(d); setTime(2.05); refreshPanel(); });
+const stage=$('#stage');
+['dragenter','dragover'].forEach(ev=>stage.addEventListener(ev,e=>{e.preventDefault(); stage.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>stage.addEventListener(ev,()=>stage.classList.remove('drag')));
+stage.addEventListener('drop',e=>{e.preventDefault(); const f=e.dataTransfer.files[0]; openFile(f, S.B||e.shiftKey?'B':'A');});
+
+/* ---------- local storage backend (standalone HTML file) ---------- */
+function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open('swinglab',1);
+  r.onupgradeneeded=()=>{const d=r.result; if(!d.objectStoreNames.contains('swings')) d.createObjectStore('swings'); if(!d.objectStoreNames.contains('videos')) d.createObjectStore('videos');};
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);});}
+function idbTx(d,store,mode,fn){return new Promise((res,rej)=>{const t=d.transaction(store,mode); const req=fn(t.objectStore(store));
+  t.oncomplete=()=>res(req?req.result:undefined); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error||new Error('aborted'));});}
+async function makeLocalBackend(){
+  const d=await idbOpen(); const listeners=new Set();
+  try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(_){}
+  const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const emit=async()=>{
+    const keys=await idbTx(d,'swings','readonly',st=>st.getAllKeys()); const vals=await idbTx(d,'swings','readonly',st=>st.getAll());
+    const docs=keys.map((k,i)=>({id:k,body:vals[i]})).sort((a,b)=>(b.body.shotDate||'').localeCompare(a.body.shotDate||''));
+    const snap={docs:docs.map(x=>({id:x.id,data:()=>x.body}))}; listeners.forEach(f=>f(snap));
+  };
+  const col={
+    doc:(id)=>{id=id||newId('r'); return {id,
+      set:async body=>{await idbTx(d,'swings','readwrite',st=>st.put(body,id)); emit();},
+      delete:async()=>{await idbTx(d,'swings','readwrite',st=>st.delete(id)); emit();}};},
+    orderBy(){return col;},
+    onSnapshot(fn){listeners.add(fn); emit(); return ()=>listeners.delete(fn);},
+  };
+  const assets={
+    upload:async blob=>{const id=newId('v'); await idbTx(d,'videos','readwrite',st=>st.put(blob,id)); return {id,url:URL.createObjectURL(blob),sizeBytes:blob.size,contentType:blob.type};},
+    delete:async id=>{await idbTx(d,'videos','readwrite',st=>st.delete(id)); return {deleted:true};},
+    list:async()=>{const n=await idbTx(d,'videos','readonly',st=>st.count()); let est={usage:0,quota:0}; try{est=await navigator.storage.estimate();}catch(_){}
+      return {assets:[],usage:{files:n,bytes:est.usage||0,maxFiles:0,maxBytes:est.quota||0}};},
+    get:id=>idbTx(d,'videos','readonly',st=>st.get(id)),
+  };
+  return {db:{collection:()=>col}, assets};
+}
+
+/* ---------- archive ---------- */
+const AR={db:null, assets:null, docs:[], ready:false, busy:false, armed:null};
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function computeSummary(src){
+  const P=src.phases, d=(a,b)=>(P[a]!=null&&P[b]!=null&&P[b]>P[a])?+((P[b]-P[a])/src.slow).toFixed(4):null;
+  const ppc=pxPerCm(src); let batMax=null;
+  if(ppc){const pts=src.tracks.bat.slice().sort((a,b)=>a.t-b.t); for(let i=1;i<pts.length;i++){const dt=(pts[i].t-pts[i-1].t)/src.slow; if(dt>0){const v=dist(pts[i],pts[i-1])/ppc/dt*0.036; if(batMax==null||v>batMax) batMax=v;}} }
+  return {swingTime:d('top','impact'), plantToImpact:d('plant','impact'), batMax:batMax==null?null:Math.round(batMax)};
+}
+function snapshotOf(src){
+  return JSON.parse(JSON.stringify({fps:src.fps, slow:src.slow, duration:src.duration, phases:src.phases, est:src.est, tracks:src.tracks,
+    anns:src.anns, scale:src.scale, checks:src.checks, memo:src.memo||'', summary:computeSummary(src)}));
+}
+function makeThumb(){
+  const w=320, h=Math.round(w*cA.height/cA.width); const c=document.createElement('canvas'); c.width=w; c.height=h;
+  c.getContext('2d').drawImage(cA,0,0,w,h);
+  try{return c.toDataURL('image/jpeg',0.72);}catch(_){return null;}
+}
+function uploadType(file){
+  const t=(file.type||'').toLowerCase();
+  if(t==='video/mp4'||t==='video/webm') return t;
+  if(/\.webm$/i.test(file.name)) return 'video/webm';
+  return 'video/mp4'; // MOV / M4V (H.264) は MP4 として保存
+}
+function errText(e){
+  const c=e&&e.code;
+  return ({too_large:'動画が20MBを超えています。複数スイングの動画なら「ベストを残す」で必要な部分だけを保存できます。1スイングの動画はスマホの編集機能で前後を切り取ってください。',
+    unsupported_type:'この動画形式は保存できません。MP4 か WebM で書き出してください。',
+    quota_or_state:'保存容量がいっぱいです。古い動画を削除してから保存してください。',
+    quota_exceeded:'保存件数の上限に達しました。古い記録を削除してください。',
+    rate_limited:'操作が続いたため一時的に止められています。少し待ってからもう一度保存してください。',
+    resource_exhausted:'操作が続いたため一時的に止められています。少し待ってからもう一度保存してください。',
+    upstream_auth:'認証が切れています。ページを再読み込みしてから保存してください。',
+    not_granted:'この表示では保存できません。編集権限のあるアカウントで開いてください。'}[c]) || `保存できませんでした(${c||'不明なエラー'})。時間をおいて再度お試しください。`;
+}
+function updateSaveBar(){
+  const bar=$('#saveBar'), A=S.A; if(!bar||!A) return;
+  if(!AR.ready){bar.innerHTML='<p class="note">このブラウザではアーカイブを使えません。Chrome・Edge・Safari などの最新版で開いてください。</p>'; return;}
+  if(A.kind==='demo'){bar.innerHTML='<p class="note">デモ映像は保存できません。「動画を読み込む」で自分のスイングを開くと、動画・フェーズ・追跡・チェック・メモをまとめて保存できます。</p>'; return;}
+  if(!AR.assets && !A.videoId){bar.innerHTML='<p class="note">閲覧のみの権限のため、新しい動画は保存できません。</p>'; return;}
+  const title=A.name.replace(/\.[a-z0-9]{2,4}$/i,'');
+  bar.innerHTML=`<label>タイトル<input type="text" id="arTitle" value="${esc(title)}" maxlength="80"></label>
+    <label style="flex:0 1 160px">撮影日<input type="date" id="arDate" value="${esc(A.shotDate||isoDate(new Date()))}"></label>
+    <button class="primary" id="arSave">${A.archiveId?'変更を上書き保存':'アーカイブに保存'}</button>
+    ${A.archiveId?'<button id="arSaveNew">別の記録として保存</button>':''}
+    <p class="note">いま表示しているコマがサムネイルになります。${AR.local?'保存先はこのブラウザです(他の端末や他の人とは共有されません)。':(A.videoId?'':'保存できる動画は1本20MBまでです。')}</p>`;
+  $('#arSave').addEventListener('click',()=>saveCurrent(false));
+  if(A.archiveId) $('#arSaveNew').addEventListener('click',()=>saveCurrent(true));
+}
+async function saveCurrent(asNew){
+  const A=S.A; if(AR.busy||A.kind!=='video') return;
+  const btn=$('#arSave'); AR.busy=true; btn.disabled=true; const label=btn.textContent;
+  try{
+    if(!A.videoId){
+      if(!AR.assets) throw {code:'not_granted'};
+      if(!AR.local && A.file && A.file.size>20*1024*1024) throw {code:'too_large'};
+      btn.textContent='動画をアップロード中…';
+      const r=await AR.assets.upload(A.file,{type:uploadType(A.file)});
+      A.videoId=r.id; A.sizeBytes=r.sizeBytes;
+    }
+    btn.textContent='保存中…';
+    const now=new Date().toISOString();
+    const title=($('#arTitle').value.trim()||A.name).slice(0,80);
+    const shotDate=$('#arDate').value||isoDate(new Date());
+    const keepId = asNew?null:A.archiveId;
+    const body={title, shotDate, bat:A.bat||{...BAT}, createdAt:(keepId&&A.createdAt)||now, updatedAt:now, videoId:A.videoId, sizeBytes:A.sizeBytes||null,
+      W:A.W, H:A.H, thumb:makeThumb(), ...snapshotOf(A)};
+    const col=AR.db.collection('swings'); const ref=keepId?col.doc(keepId):col.doc();
+    await ref.set(body);
+    A.archiveId=ref.id; A.createdAt=body.createdAt; A.name=title; A.shotDate=shotDate;
+    $('#srcName').textContent=title.length>22?title.slice(0,20)+'…':title;
+    toast(keepId?'変更を保存しました':'アーカイブに保存しました'); refreshUsage();
+  }catch(e){ toast(errText(e)); }
+  finally{ AR.busy=false; updateSaveBar(); renderArchive(); }
+}
+function fmtDate(s){if(!s) return '—'; const [y,m,d]=s.split('-'); return `${y}.${m}.${d}`;}
+function renderArchive(){
+  const grid=$('#arGrid'); if(!grid) return;
+  if(!AR.ready){grid.innerHTML=''; return;}
+  const q=($('#arSearch').value||'').trim().toLowerCase();
+  const list=visibleDocs().filter(d=>!q||(d.title||'').toLowerCase().includes(q)||(d.memo||'').toLowerCase().includes(q));
+  $('#arStatus').textContent = AR.docs.length?`${AR.docs.length}件の記録${q?` · ${list.length}件を表示`:''}(撮影日の新しい順)`:'';
+  if(!AR.docs.length){grid.innerHTML='<div class="ar-empty" style="grid-column:1/-1">まだ保存された動画はありません。自分のスイング動画を読み込んで「アーカイブに保存」を押すと、ここに並びます。</div>'; return;}
+  if(!list.length){grid.innerHTML='<div class="ar-empty" style="grid-column:1/-1">条件に合う記録はありません。</div>'; return;}
+  const cur=S.A&&S.A.archiveId;
+  grid.innerHTML=list.map(d=>{const sm=d.summary||{}; const nChk=Object.keys(d.checks||{}).length;
+    return `<article class="card${d.id===cur?' current':''}">
+      <div class="th">${d.thumb?`<img src="${esc(d.thumb)}" alt="">`:''}</div>
+      <div class="bd">
+        <span class="dt">${fmtDate(d.shotDate)}${d.id===cur?' · 表示中':''}</span>
+        <span class="ti">${esc(d.title)}</span>
+        <span class="kv"><span>スイング時間 <b>${sm.swingTime!=null?sm.swingTime.toFixed(3)+'秒':'—'}</b></span>
+          <span>バット最大 <b>${sm.batMax!=null?sm.batMax+'km/h':'—'}</b></span>
+          ${d.bat?`<span>バット ${esc(d.bat.length)}cm・${esc(d.bat.weight)}g</span>`:''}<span>${d.fps||30}fps</span>${nChk?`<span>チェック ${nChk}/${CHECKS.length}</span>`:''}</span>
+        <div class="act">
+          <button data-open="${d.id}">開く</button>
+          <button data-cmp="${d.id}">B で比較</button>
+          ${AR.canExport?`<button data-exp="${d.id}">共有</button>`:''}
+          ${AR.assets?`<button class="del${AR.armed===d.id?' arm':''}" data-del="${d.id}">${AR.armed===d.id?'削除する':'削除'}</button>`:''}
+        </div>
+      </div></article>`;}).join('');
+}
+async function openArchived(id,slot){
+  const d=AR.docs.find(x=>x.id===id); if(!d) return;
+  pause(); toast('動画を読み込んでいます…');
+  try{
+    let vurl='/_blob/'+d.videoId;
+    if(AR.local){ const blob=await AR.assets.get(d.videoId); if(!blob) throw new Error('動画データが見つかりませんでした。ブラウザのデータが消去された可能性があります。'); vurl=URL.createObjectURL(blob); }
+    const src=await loadVideoUrl(vurl, d.title);
+    const copy=JSON.parse(JSON.stringify(d));
+    Object.assign(src,{fps:copy.fps||30, slow:copy.slow||1, phases:copy.phases||{}, est:copy.est||{},
+      tracks:Object.assign({bat:[],grip:[],head:[]},copy.tracks||{}), anns:copy.anns||[], scale:copy.scale||null,
+      checks:copy.checks||{}, memo:copy.memo||'', bat:copy.bat||null, player:copy.player||'', videoId:d.videoId, sizeBytes:d.sizeBytes, shotDate:d.shotDate,
+      createdAt:d.createdAt, archiveId: slot==='A'?d.id:null});
+    if(slot==='B'){ if(S.B&&S.B.el) S.B.el.remove(); setSourceB(src); }
+    else { if(S.A&&S.A.el) S.A.el.remove(); setSourceA(src); if(src.phases.impact!=null) setTime(src.phases.impact); }
+    toast(slot==='B'?`「${d.title}」を B に開きました`:`「${d.title}」を開きました`);
+    document.querySelector('.viewer').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    await scanEnergy(src); if(src.phases.impact==null) estimatePhases(src);
+    refreshPanel(); if(slot==='B') syncB(); renderAll();
+  }catch(e){ toast(e.message||'動画を開けませんでした。削除された可能性があります。'); }
+}
+async function deleteArchived(id){
+  const d=AR.docs.find(x=>x.id===id); if(!d) return;
+  try{
+    await AR.db.collection('swings').doc(id).delete();
+    if(d.videoId && !AR.docs.some(x=>x.id!==id&&x.videoId===d.videoId)) await AR.assets.delete(d.videoId);
+    if(S.A&&S.A.archiveId===id){ S.A.archiveId=null; if(!S.A.file) S.A.videoId=null; updateSaveBar(); }
+    toast(`「${d.title}」を削除しました`); refreshUsage();
+  }catch(e){ toast(`削除できませんでした(${e.code||'不明なエラー'})`); }
+}
+$('#arGrid').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.open) openArchived(b.dataset.open,'A');
+  else if(b.dataset.cmp) openArchived(b.dataset.cmp,'B');
+  else if(b.dataset.exp) exportRecords([b.dataset.exp]);
+  else if(b.dataset.del){ if(AR.armed===b.dataset.del){AR.armed=null; deleteArchived(b.dataset.del);} else {AR.armed=b.dataset.del; renderArchive(); setTimeout(()=>{if(AR.armed===b.dataset.del){AR.armed=null; renderArchive();}},4000);} }
+});
+$('#arSearch').addEventListener('input',renderArchive);
+async function refreshUsage(){
+  if(!AR.assets) return;
+  try{const {usage:u}=await AR.assets.list(); const mb=b=>(b/1048576).toFixed(0);
+    $('#arUsage').textContent= AR.local ? `このブラウザに保存 · 動画 ${u.files} 本 · 使用 ${mb(u.bytes)} MB${u.maxBytes?` / 上限の目安 ${mb(u.maxBytes)} MB`:''}` : `保存容量 ${mb(u.bytes)} / ${mb(u.maxBytes)} MB · 動画 ${u.files} 本`;}catch(_){}
+}
+(async()=>{
+  const cl=window.claude;
+  let [db,assets]=cl&&cl.use?await Promise.all([cl.use('db'),cl.use('assets')]):[null,null];
+  if(!cl && window.indexedDB){ try{ const b=await makeLocalBackend(); db=b.db; assets=b.assets; AR.local=true; }catch(_){ db=null; } }
+  AR.db=db; AR.assets=assets;
+  if(AR.local) $('#arStatus').textContent='';
+  if(!db){ $('#arStatus').textContent=''; updateSaveBar(); $('#arGrid').innerHTML=''; return; }
+  AR.ready=true;
+  if(AR.local) AR.canExport=true; else { try{ AR.canExport=!!(await cl.use('downloads')); }catch(_){ AR.canExport=false; } }
+  $('#arShare').hidden=!(AR.canExport||AR.assets); $('#expAll').hidden=!AR.canExport; $('#impFile').parentElement.hidden=!AR.assets;
+  updateSaveBar();
+  db.collection('swings').orderBy('shotDate','desc').onSnapshot(snap=>{
+    AR.docs=snap.docs.map(x=>({id:x.id,...x.data()})); renderArchive(); renderGrowth();
+  }, err=>{ $('#arStatus').textContent=`アーカイブを読み込めませんでした(${err.code})。ページを再読み込みしてください。`; });
+  refreshUsage();
+})();
+
+function visibleDocs(){return AR.docs;}
+
+/* ---------- share files (.swinglab) ---------- */
+const MAGIC='SWLB1';
+async function videoBlob(d){
+  if(AR.local) return await AR.assets.get(d.videoId);
+  const r=await fetch('/_blob/'+d.videoId); if(!r.ok) throw new Error('動画を取得できませんでした'); return await r.blob();
+}
+function safeName(t){return (t||'swing').replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,40);}
+async function exportRecords(ids){
+  const docs=ids.map(id=>AR.docs.find(d=>d.id===id)).filter(Boolean);
+  if(!docs.length){toast('書き出す記録がありません');return;}
+  toast(`${docs.length}件の記録を準備しています…`);
+  try{
+    const parts=[], recs=[]; let off=0;
+    for(const d of docs){
+      const vb=await videoBlob(d); if(!vb) throw new Error(`「${d.title}」の動画データが見つかりません`);
+      const {videoId, ...rest}=d; recs.push({...rest, video:{offset:off, length:vb.size, type:vb.type||'video/mp4'}}); parts.push(vb); off+=vb.size;
+    }
+    const json=new TextEncoder().encode(JSON.stringify({format:'swinglab', version:1, exportedAt:new Date().toISOString(), records:recs}));
+    const head=new Uint8Array(9); head.set(new TextEncoder().encode(MAGIC),0); new DataView(head.buffer).setUint32(5,json.length,true);
+    const blob=new Blob([head,json,...parts],{type:'application/octet-stream'});
+    const name=`swinglab_${docs.length===1?safeName(docs[0].shotDate+'_'+docs[0].title):isoDate(new Date())+'_'+docs.length+'件'}.swinglab`;
+    await deliverFile(name,blob);
+  }catch(e){ toast(e.message||'書き出せませんでした'); }
+}
+async function deliverFile(name,blob){
+  if(!AR.local){
+    const dl=await window.claude.use('downloads'); if(!dl){toast('この表示では書き出しできません');return;}
+    try{const r=await dl.save({filename:name,data:blob}); if(r&&r.status==='saved') toast('共有ファイルを保存しました。LINE やメールで相手に送ってください');}
+    catch(e){ if(e&&e.code!=='cancelled'&&e.code!=='declined') toast(`保存できませんでした(${e.code||'不明'})`); }
+    return;
+  }
+  const file=new File([blob],name,{type:'application/octet-stream'});
+  const mobile=/iPhone|iPad|Android/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform));
+  if(mobile && navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:'スイングの記録'}); return; }catch(e){ if(e&&e.name==='AbortError') return; }
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
+  toast('共有ファイルを保存しました。LINE やメールで相手に送ってください');
+}
+async function importFile(file){
+  if(!AR.ready||!AR.assets){toast('この表示では読み込めません');return;}
+  try{
+    const buf=await file.arrayBuffer(); const u8=new Uint8Array(buf);
+    if(new TextDecoder().decode(u8.slice(0,5))!==MAGIC) throw new Error('SWINGLAB の共有ファイルではありません');
+    const jl=new DataView(buf).getUint32(5,true); const meta=JSON.parse(new TextDecoder().decode(u8.slice(9,9+jl)));
+    if(meta.format!=='swinglab'||!Array.isArray(meta.records)) throw new Error('共有ファイルの形式を読み取れませんでした');
+    const base=9+jl; let add=0, upd=0, same=0, fail=0;
+    toast(`${meta.records.length}件を読み込んでいます…`);
+    for(const r of meta.records){
+      const id=String(r.id||'').replace(/[^A-Za-z0-9_\-.~:@+]/g,'').slice(0,100)||null;
+      const ex=id&&AR.docs.find(d=>d.id===id);
+      if(ex && (ex.updatedAt||'')>=(r.updatedAt||'')){same++; continue;}
+      try{
+        const vb=new Blob([u8.slice(base+r.video.offset, base+r.video.offset+r.video.length)],{type:r.video.type});
+        if(!AR.local && vb.size>20*1024*1024) throw {code:'too_large'};
+        const up=await AR.assets.upload(vb,{type:(r.video.type==='video/webm'?'video/webm':'video/mp4')});
+        const {video, id:_i, ...rest}=r;
+        const body=JSON.parse(JSON.stringify({...rest, videoId:up.id, sizeBytes:up.sizeBytes}));
+        await AR.db.collection('swings').doc(id||undefined).set(body);
+        if(ex && ex.videoId && ex.videoId!==up.id && !AR.docs.some(x=>x.id!==ex.id&&x.videoId===ex.videoId)) { try{await AR.assets.delete(ex.videoId);}catch(_){} }
+        ex?upd++:add++;
+      }catch(e){ fail++; }
+    }
+    toast(`読み込み完了: 追加 ${add}件 · 更新 ${upd}件 · 変更なし ${same}件${fail?` · 失敗 ${fail}件`:''}`);
+    refreshUsage();
+  }catch(e){ toast(e.message||'読み込めませんでした'); }
+}
+$('#impFile').addEventListener('change',e=>{const f=e.target.files[0]; e.target.value=''; if(f) importFile(f);});
+$('#expAll').addEventListener('click',()=>{
+  const q=($('#arSearch').value||'').trim().toLowerCase();
+  const ids=visibleDocs().filter(d=>!q||(d.title||'').toLowerCase().includes(q)||(d.memo||'').toLowerCase().includes(q)).map(d=>d.id);
+  exportRecords(ids);
+});
+
+/* ---------- growth charts ---------- */
+const G={range:'all', table:false};
+function checkScore(d){const c=d.checks||{}; const ks=Object.keys(c); if(!ks.length) return null; let s=0; ks.forEach(k=>{s+=c[k]==='good'?1:c[k]==='mid'?0.5:0;}); return s;}
+const GM=[
+  {key:'batMax', label:'バット先端の最大速度', unit:'km/h', better:'up', dec:0, get:d=>d.summary&&d.summary.batMax,
+    empty:'基準長を設定してバット先端を追跡した記録が入ると表示されます'},
+  {key:'swingTime', label:'スイング時間(始動→インパクト)', unit:'秒', better:'down', dec:3, get:d=>d.summary&&d.summary.swingTime,
+    empty:'「トップ」と「インパクト」を設定した記録が入ると表示されます'},
+  {key:'plantToImpact', label:'着地→インパクト', unit:'秒', better:null, dec:3, get:d=>d.summary&&d.summary.plantToImpact,
+    empty:'「着地」と「インパクト」を設定した記録が入ると表示されます'},
+  {key:'check', label:'フォームチェックの得点(7点満点)', unit:'点', better:'up', dec:1, get:checkScore,
+    empty:'チェックタブで ◯△× を付けた記録が入ると表示されます(◯=1点、△=0.5点)'},
+];
+const SAMPLE=[['2026-04-05',96,.198,.205,{0:'mid',1:'bad',2:'mid',3:'good',4:'bad',5:'mid',6:'good'}],['2026-04-26',99,.192,.200,{0:'mid',1:'mid',2:'mid',3:'good',4:'bad',5:'mid',6:'good'}],
+  ['2026-05-17',98,.195,.198,{0:'good',1:'mid',2:'mid',3:'good',4:'bad',5:'mid',6:'good'}],['2026-06-14',103,.186,.196,{0:'good',1:'mid',2:'good',3:'good',4:'mid',5:'mid',6:'good'}],
+  ['2026-07-12',105,.181,.190,{0:'good',1:'good',2:'good',3:'good',4:'mid',5:'mid',6:'good'}],['2026-08-09',104,.183,.188,{0:'good',1:'good',2:'good',3:'good',4:'mid',5:'mid',6:'good'}],
+  ['2026-09-06',109,.176,.185,{0:'good',1:'good',2:'good',3:'good',4:'mid',5:'good',6:'good'}],['2026-09-27',112,.171,.182,{0:'good',1:'good',2:'good',3:'good',4:'good',5:'good',6:'good'}]]
+  .map((r,i)=>({id:'sample'+i, sample:true, title:`サンプル ${i+1}回目`, shotDate:r[0], summary:{batMax:r[1],swingTime:r[2],plantToImpact:r[3]}, checks:r[4]}));
+function parseDate(s){const [y,m,d]=(s||'').split('-').map(Number); return new Date(y,(m||1)-1,d||1);}
+function niceTicks(lo,hi,n){
+  if(lo===hi){const pad=Math.abs(lo)*0.05||1; lo-=pad; hi+=pad;}
+  const raw=(hi-lo)/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/mag;
+  const step=(f<1.5?1:f<3?2:f<7?5:10)*mag;
+  const a=Math.floor(lo/step)*step, b=Math.ceil(hi/step)*step; const t=[];
+  for(let v=a; v<=b+step/2; v+=step) t.push(+v.toFixed(6));
+  return {ticks:t, lo:a, hi:b, step};
+}
+function tickDec(step){return step>=1?0:Math.min(3,Math.ceil(-Math.log10(step)));}
+const SVGNS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(SVGNS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e;}
+function renderGrowth(){
+  const grid=$('#gGrid'); if(!grid) return;
+  const real=visibleDocs().filter(d=>GM.some(m=>m.get(d)!=null));
+  const sample = real.length<2;
+  const band=$('#gSample'); band.hidden=!sample;
+  if(sample) band.textContent = real.length===1
+    ? '記録が1件のため、線はサンプルで表示しています。2件目を保存すると自分の記録に切り替わります。'
+    : 'サンプル表示です。計測したスイングをアーカイブに保存すると、自分の記録の推移に切り替わります。';
+  let docs = sample?SAMPLE:real;
+  if(G.range!=='all'){ const lim=new Date(); lim.setDate(lim.getDate()-(+G.range)); docs=docs.filter(d=>parseDate(d.shotDate)>=lim); }
+  grid.innerHTML=''; const later=[];
+  GM.forEach(m=>{
+    const pts=docs.map(d=>({d, v:m.get(d), t:parseDate(d.shotDate)})).filter(p=>p.v!=null&&!isNaN(p.t)).sort((a,b)=>a.t-b.t||(a.d.createdAt||'').localeCompare(b.d.createdAt||''));
+    const card=document.createElement('div'); card.className='gcard';
+    const lbl=document.createElement('span'); lbl.className='gl'; lbl.textContent=m.label; card.appendChild(lbl);
+    if(!pts.length){
+      const v=document.createElement('span'); v.className='gv'; v.textContent='—'; card.appendChild(v);
+      const e=document.createElement('div'); e.className='empty'; e.textContent=G.range==='all'?m.empty:'この期間の記録はありません'; card.appendChild(e);
+      grid.appendChild(card); return;
+    }
+    const last=pts[pts.length-1], first=pts[0];
+    const gv=document.createElement('span'); gv.className='gv'; gv.innerHTML=`${last.v.toFixed(m.dec)}<small>${m.unit}</small>`; card.appendChild(gv);
+    const gd=document.createElement('div'); gd.className='gd';
+    if(pts.length>1){
+      const diff=last.v-first.v, eps=m.dec?Math.pow(10,-m.dec)/2:0.5;
+      let cls='flat', arrow='→'; if(diff>eps){arrow='▲';} else if(diff<-eps){arrow='▼';}
+      if(arrow!=='→' && m.better){ cls = (m.better==='up')===(diff>0)?'good':'bad'; }
+      const word = cls==='good'?'改善':cls==='bad'?'後退':'';
+      gd.innerHTML=`<span class="dl ${cls}">${arrow} ${diff>0?'+':''}${diff.toFixed(m.dec)} ${m.unit}${word?` ${word}`:''}</span><span>初回 ${fmtDate(first.d.shotDate)} から</span>`;
+      const best = m.better==='down'?Math.min(...pts.map(p=>p.v)):Math.max(...pts.map(p=>p.v));
+      if(m.better){const b=document.createElement('span'); b.textContent=`ベスト ${best.toFixed(m.dec)} ${m.unit}`; gd.appendChild(b);}
+    } else gd.innerHTML='<span>記録が2件以上になると変化を表示します</span>';
+    card.appendChild(gd);
+    grid.appendChild(card);
+    later.push([card,m,pts]);
+  });
+  later.forEach(([c,m,pts])=>drawGrowthChart(c,m,pts,sample));
+  renderGrowthTable(docs,sample);
+}
+function drawGrowthChart(card,m,pts,sample){
+  const W=Math.max(240,card.clientWidth-24), H=150, L=44, Rp=46, T=12, B=22;
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':`${m.label}の推移`},card);
+  const vals=pts.map(p=>p.v); const nt=niceTicks(Math.min(...vals),Math.max(...vals),3);
+  const t0=+pts[0].t, t1=+pts[pts.length-1].t, span=t1-t0;
+  const X=t=>pts.length===1||!span?(L+(W-L-Rp)/2):L+(W-L-Rp)*(t-t0)/span;
+  const Y=v=>T+(H-T-B)*(1-(v-nt.lo)/((nt.hi-nt.lo)||1));
+  const gx=el('g',{class:'gx'},svg); const dec=tickDec(nt.step);
+  nt.ticks.forEach(v=>{el('line',{class:'grid',x1:L,x2:W-Rp+8,y1:Y(v),y2:Y(v)},gx); const tx=el('text',{x:L-6,y:Y(v)+3.5,'text-anchor':'end'},gx); tx.textContent=v.toFixed(dec);});
+  // x labels: first & last (and middle if room)
+  const xl=[pts[0]]; if(pts.length>1) xl.push(pts[pts.length-1]);
+  xl.forEach((p,i)=>{const tx=el('text',{x:X(+p.t),y:H-5,'text-anchor':pts.length===1?'middle':(i===0?'start':'end')},gx); const dt=p.t; tx.textContent=`${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;});
+  if(pts.length>1){
+    const path=pts.map((p,i)=>`${i?'L':'M'}${X(+p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
+    el('path',{class:'garea',d:`${path}L${X(t1).toFixed(1)},${Y(nt.lo)}L${X(t0).toFixed(1)},${Y(nt.lo)}Z`},svg);
+    el('path',{class:'gline',d:path},svg);
+  }
+  const cross=el('line',{class:'gcross',y1:T,y2:H-B,x1:0,x2:0,visibility:'hidden'},svg);
+  const dots=pts.map(p=>el('circle',{class:'gdot',cx:X(+p.t),cy:Y(p.v),r:4},svg));
+  const lp=pts[pts.length-1]; const et=el('text',{class:'gend',x:X(+lp.t)+9,y:Y(lp.v)+4},svg); et.textContent=lp.v.toFixed(m.dec);
+  const hit=el('rect',{class:'ghit'+(sample?'':' link'),x:L-10,y:0,width:W-L-Rp+30,height:H},svg);
+  const tip=$('#gTip'); let cur=-1;
+  const near=e=>{const r=svg.getBoundingClientRect(); const x=(e.clientX-r.left)*W/r.width; let bi=0,bd=Infinity; pts.forEach((p,i)=>{const dd=Math.abs(X(+p.t)-x); if(dd<bd){bd=dd;bi=i;}}); return bi;};
+  hit.addEventListener('pointermove',e=>{
+    const i=near(e); if(i!==cur){ if(cur>=0) dots[cur].setAttribute('r',4); dots[i].setAttribute('r',6); cur=i; }
+    const p=pts[i]; cross.setAttribute('x1',X(+p.t)); cross.setAttribute('x2',X(+p.t)); cross.setAttribute('visibility','visible');
+    tip.innerHTML=''; const a=document.createElement('div'); a.className='m'; a.textContent=fmtDate(p.d.shotDate);
+    const t=document.createElement('div'); t.textContent=p.d.title||''; t.style.fontWeight='700';
+    const v=document.createElement('div'); v.innerHTML=`<b>${p.v.toFixed(m.dec)}</b> ${m.unit}`;
+    tip.append(a,t,v); if(!p.d.sample){const h=document.createElement('div'); h.className='m'; h.textContent='クリックで動画を開く'; tip.appendChild(h);}
+    tip.hidden=false; const tw=tip.offsetWidth, th=tip.offsetHeight;
+    let lx=e.clientX+14, ly=e.clientY-th-10; if(lx+tw>innerWidth-8) lx=e.clientX-tw-14; if(ly<8) ly=e.clientY+16;
+    tip.style.left=lx+'px'; tip.style.top=ly+'px';
+  });
+  hit.addEventListener('pointerleave',()=>{tip.hidden=true; cross.setAttribute('visibility','hidden'); if(cur>=0) dots[cur].setAttribute('r',4); cur=-1;});
+  hit.addEventListener('click',e=>{const p=pts[near(e)]; if(p.d.sample){toast('サンプルの点です。自分の記録を保存すると開けるようになります'); return;} tip.hidden=true; openArchived(p.d.id,'A');});
+}
+function renderGrowthTable(docs,sample){
+  const box=$('#gTable'); box.hidden=!G.table; if(!G.table) return;
+  const rows=docs.slice().sort((a,b)=>parseDate(b.shotDate)-parseDate(a.shotDate));
+  const tbl=document.createElement('table');
+  tbl.innerHTML=`<caption class="note" style="text-align:left;caption-side:top;padding-bottom:6px">${sample?'サンプルの記録':'保存した記録'}(撮影日の新しい順)</caption><thead><tr><th>撮影日</th><th>タイトル</th><th>バット</th>${GM.map(m=>`<th class="n">${m.label.replace(/[((].*$/,'')}(${m.unit})</th>`).join('')}</tr></thead>`;
+  const tb=document.createElement('tbody');
+  rows.forEach(d=>{const tr=document.createElement('tr');
+    const c1=document.createElement('td'); c1.textContent=fmtDate(d.shotDate); const c2=document.createElement('td'); c2.textContent=d.title||'';
+    const c3=document.createElement('td'); c3.textContent=d.bat?`${d.bat.length}cm・${d.bat.weight}g`:'—';
+    tr.append(c1,c2,c3); GM.forEach(m=>{const v=m.get(d); const td=document.createElement('td'); td.className='n'; td.textContent=v==null?'—':v.toFixed(m.dec); tr.appendChild(td);}); tb.appendChild(tr);});
+  tbl.appendChild(tb); box.innerHTML=''; box.appendChild(tbl);
+}
+$('#gRange').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; G.range=b.dataset.r; $$('#gRange button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); renderGrowth();});
+$('#gTableBtn').addEventListener('click',e=>{G.table=!G.table; e.currentTarget.setAttribute('aria-pressed',String(G.table)); e.currentTarget.textContent=G.table?'表を閉じる':'表で見る'; renderGrowth();});
+let gResize; window.addEventListener('resize',()=>{clearTimeout(gResize); gResize=setTimeout(renderGrowth,150);});
+
+
+/* ---------- theme follow ---------- */
+new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);
+window.addEventListener('resize',()=>renderAll());
+
+/* ---------- boot ---------- */
+renderGrowth();
+setTool('none');
+const demo=makeDemo(); setSourceA(demo); setTime(2.05);
+scanEnergy(demo).then(()=>{estimatePhases(demo); demo.est.stance=false; demo.phases.stance=1.0; demo.phases.plant=1.85; demo.est.plant=false; refreshPanel(); renderAll();});
+})();
+</script>
+
+</body>
+</html>
