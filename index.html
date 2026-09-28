@@ -539,13 +539,12 @@ function loadVideo(file){
 function isoDate(d){const z=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;}
 function loadVideoUrl(url,name){
   return new Promise((res,rej)=>{
-    const el=document.createElement('video'); el.muted=true; el.playsInline=true; el.preload='auto'; if(/^https?:/.test(url)) el.crossOrigin='anonymous'; el.src=url;
-    hidden.appendChild(el);
+    const el=newVideoEl(url);
     el.addEventListener('error',()=>rej(new Error('この形式の動画は読み込めませんでした。MP4 (H.264) か MOV で試してください。')),{once:true});
     el.addEventListener('loadedmetadata',async ()=>{
       if(el.duration===Infinity){ await new Promise(r=>{const f=()=>{if(isFinite(el.duration)){el.removeEventListener('durationchange',f);r();}}; el.addEventListener('durationchange',f); el.currentTime=1e7; setTimeout(r,3000);}); }
       if(!isFinite(el.duration)||!el.videoWidth){rej(new Error('動画の長さか画面サイズを読み取れませんでした。別の形式で書き出して試してください。'));return;}
-      await seekVideo(el,0);
+      await primeVideo(el); await seekVideo(el,0);
       const sc=Math.min(1,1280/Math.max(el.videoWidth,el.videoHeight));
       const s=blankSource({kind:'video', name, url, el, W:Math.round(el.videoWidth*sc), H:Math.round(el.videoHeight*sc), duration:el.duration, fps:guessFps(el.duration),
         render(ctx){ctx.drawImage(el,0,0,ctx.canvas.width,ctx.canvas.height)}});
@@ -565,8 +564,26 @@ function makeDiffer(src){
     for(let j=0;j<g.length;j++) g[j]=d[j*4]*.3+d[j*4+1]*.59+d[j*4+2]*.11;
     let e=null; if(prev){e=0; for(let j=0;j<g.length;j++) e+=Math.abs(g[j]-prev[j]); e/=g.length;} prev=g; return e; };
 }
-function mkVideo(url){const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.preload='auto'; if(/^https?:/.test(url)) v.crossOrigin='anonymous'; v.src=url; hidden.appendChild(v);
-  return new Promise((res,rej)=>{ if(v.readyState>=2) return res(v); v.addEventListener('loadeddata',()=>res(v),{once:true}); v.addEventListener('error',()=>rej(new Error('video')),{once:true}); });}
+function newVideoEl(url){
+  const v=document.createElement('video');
+  v.muted=true; v.defaultMuted=true; v.setAttribute('muted',''); v.playsInline=true; v.setAttribute('playsinline',''); v.setAttribute('webkit-playsinline','');
+  v.preload='auto'; if(/^https?:/.test(url)) v.crossOrigin='anonymous'; v.src=url; hidden.appendChild(v); try{v.load();}catch(_){}
+  return v;
+}
+// iPhone Safari does not decode frames of an unplayed video: nudge it with a muted play/pause
+function primeVideo(v){
+  return new Promise(res=>{
+    if(v.readyState>=2) return res(true);
+    let done=false; const fin=ok=>{ if(done) return; done=true; res(ok); };
+    v.addEventListener('loadeddata',()=>fin(true),{once:true});
+    v.addEventListener('error',()=>fin(false),{once:true});
+    setTimeout(()=>{ if(v.readyState<2){ const pr=v.play(); if(pr&&pr.then) pr.then(()=>{v.pause(); fin(true);}).catch(()=>fin(v.readyState>=1)); } },300);
+    setTimeout(()=>fin(v.readyState>=1),6000);
+  });
+}
+function mkVideo(url){ const v=newVideoEl(url);
+  return new Promise((res,rej)=>{ v.addEventListener('error',()=>rej(new Error('video')),{once:true}); primeVideo(v).then(()=>res(v)); });}
+const SCAN={needTap:false};
 async function scanPlay(src,t0,t1,rate,onProg){
   if(src.kind!=='video' || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return null;
   let v; try{ v=await mkVideo(src.url); }catch(_){ return null; }
@@ -583,7 +600,7 @@ async function scanPlay(src,t0,t1,rate,onProg){
     v.requestVideoFrameCallback(cb);
     watch=setInterval(()=>{ if(Date.now()-alive>5000) fin(false); },1000);
     v.addEventListener('ended',()=>fin(true),{once:true});
-    v.playbackRate=rate; v.play().catch(()=>fin(false));
+    v.playbackRate=rate; v.play().catch(e=>{ if(e&&e.name==='NotAllowedError') SCAN.needTap=true; fin(false); });
   });
 }
 async function scanSeek(src,t0,t1,step,onProg){
@@ -607,7 +624,15 @@ async function scanEnergy(src){
   const prog=p=>{ setBar('#scanBar',p); if(isVid){ title.textContent=`この動画のスイング — 動きを解析中… ${Math.round(p*100)}%`; } };
   if(isVid){ $('#swPanel').hidden=false; prog(0); $('#swBest').innerHTML=`<span class="note">動画を再生しながら動きを調べています。${long?'長い動画では動画の長さの4分の1ほどの時間がかかります。':'数秒〜20秒ほどで終わります。'}</span>`; $('#swTable').innerHTML=''; }
   let out=null;
-  if(isVid) out=await scanPlay(src,0,src.duration, long?4:Math.min(1,50/src.fps), prog);
+  const rate= long?4:Math.min(1,50/src.fps);
+  if(isVid){ SCAN.needTap=false; out=await scanPlay(src,0,src.duration,rate,prog); }
+  if(!out && isVid && SCAN.needTap){
+    $('#swBest').innerHTML='<span>この端末では、画面をタップしないと裏で動画を再生できません(iPhone の低電力モードなど)。下のボタンを押すと解析を始めます。</span><div class="row"><button class="primary" id="scanTap">動きの解析を始める</button></div>';
+    title.textContent='この動画のスイング — タップで解析を開始';
+    await new Promise(r=>$('#scanTap').addEventListener('click',()=>{ try{ S.A&&S.A.el&&S.A.el.play().then(()=>S.A.el.pause()).catch(()=>{});}catch(_){ } r(); },{once:true}));
+    $('#swBest').innerHTML='<span class="note">解析しています…</span>';
+    SCAN.needTap=false; out=await scanPlay(src,0,src.duration,rate,prog);
+  }
   if(!out){
     if(isVid) $('#swBest').innerHTML='<span class="note">このブラウザでは速い方式が使えないため、1コマずつ調べています。少し時間がかかります。</span>';
     const step= long ? Math.max(1/10, src.duration/1500) : Math.max(1/src.fps, src.duration/300);
