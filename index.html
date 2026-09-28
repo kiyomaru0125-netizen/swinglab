@@ -258,7 +258,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
       <div class="swings" id="swPanel" hidden>
         <div class="sw-head">
           <h2 id="swTitle">この動画のスイング</h2>
-          <div class="row"><button id="swMore" hidden>さらに5本を詳しく解析</button></div>
+          <div class="row"><button id="swAddTop">この位置をスイングとして追加</button><button id="swMore" hidden>さらに5本を詳しく解析</button></div>
         </div>
         <div class="progress" id="swBar" hidden><i></i></div>
         <div class="sw-best" id="swBest"></div>
@@ -602,10 +602,17 @@ async function scanSeek(src,t0,t1,step,onProg){
 function smoothE(out){return out.map((p,i)=>{let s=0,c=0;for(let k=-1;k<=1;k++){const q=out[i+k];if(q){s+=q.e;c++;}}return {t:p.t,e:s/c};});}
 function setBar(id,p){const b=$(id); if(p==null){b.hidden=true; b.firstElementChild.style.width='0'; return;} b.hidden=false; b.firstElementChild.style.width=(p*100).toFixed(1)+'%';}
 async function scanEnergy(src){
-  const long = src.kind==='video' && src.duration>20;
+  const isVid=src.kind==='video', long=isVid && src.duration>20;
+  const title=$('#swTitle');
+  const prog=p=>{ setBar('#scanBar',p); if(isVid){ title.textContent=`この動画のスイング — 動きを解析中… ${Math.round(p*100)}%`; } };
+  if(isVid){ $('#swPanel').hidden=false; prog(0); $('#swBest').innerHTML=`<span class="note">動画を再生しながら動きを調べています。${long?'長い動画では動画の長さの4分の1ほどの時間がかかります。':'数秒〜20秒ほどで終わります。'}</span>`; $('#swTable').innerHTML=''; }
   let out=null;
-  if(long){ $('#swPanel').hidden=false; $('#swTitle').textContent='この動画のスイング — 動きを解析中…'; $('#swBest').innerHTML='<span class="note">動画全体を早送りで解析しています。長い動画では1〜2分かかります。</span>'; $('#swTable').innerHTML=''; out=await scanPlay(src,0,src.duration,4,p=>setBar('#scanBar',p)); }
-  if(!out){ const step= long ? Math.max(1/15, src.duration/3000) : Math.max(1/src.fps, src.duration/600); out=await scanSeek(src,0,src.duration,step,p=>setBar('#scanBar',p)); }
+  if(isVid) out=await scanPlay(src,0,src.duration, long?4:Math.min(1,50/src.fps), prog);
+  if(!out){
+    if(isVid) $('#swBest').innerHTML='<span class="note">このブラウザでは速い方式が使えないため、1コマずつ調べています。少し時間がかかります。</span>';
+    const step= long ? Math.max(1/10, src.duration/1500) : Math.max(1/src.fps, src.duration/300);
+    out=await scanSeek(src,0,src.duration,step,prog);
+  }
   src.energy=smoothE(out);
   setBar('#scanBar',null);
 }
@@ -874,7 +881,7 @@ $('#phases').addEventListener('click',e=>{
   if(b.dataset.go){ pause(); setTime(A.phases[b.dataset.go]); }
 });
 $('#autoBtn').addEventListener('click',()=>{
-  if(!S.A.energy.length){toast('動きの量を解析中です。少し待ってからもう一度押してください');return;}
+  if(!S.A.energy.length){toast('動きの量を解析中です。下の「この動画のスイング」欄の%が100になるまでお待ちください');return;}
   if(estimatePhases(S.A)){refreshPanel(); renderAll(); toast('インパクト・始動・フィニッシュを推定しました。点線は推定値です');}
   else toast('動きのピークが見つかりませんでした。手動で設定してください');
 });
@@ -1019,10 +1026,18 @@ syncBatInputs();
 const SW={busy:false, confirm:null};
 function detectSwings(src){
   const E=src.energy; if(E.length<10) return [];
-  const vals=E.map(p=>p.e).sort((a,b)=>a-b); const med=vals[Math.floor(vals.length*.5)], p98=vals[Math.floor(vals.length*.98)];
-  if(!(p98>med*1.6)) return [];
-  const thr=med+0.35*(p98-med); const peaks=[];
-  for(let i=1;i<E.length-1;i++) if(E[i].e>thr && E[i].e>=E[i-1].e && E[i].e>=E[i+1].e) peaks.push(i);
+  const dt=(E[E.length-1].t-E[0].t)/(E.length-1)||0.05;
+  const win=Math.max(2,Math.round(1.5/dt));
+  const cand=[];
+  for(let i=1;i<E.length-1;i++){
+    if(!(E[i].e>=E[i-1].e && E[i].e>=E[i+1].e)) continue;
+    let lo=Infinity; for(let k=Math.max(0,i-win);k<=Math.min(E.length-1,i+win);k++) lo=Math.min(lo,E[k].e);
+    cand.push({i, prom:E[i].e-lo});
+  }
+  if(!cand.length) return [];
+  const maxP=Math.max(...cand.map(c=>c.prom)); const srt=E.map(p=>p.e).sort((x,y)=>x-y), p50=srt[Math.floor(srt.length*.5)];
+  if(!(maxP>0) || maxP<0.5*p50) return [];
+  const peaks=cand.filter(c=>c.prom>=0.3*maxP).map(c=>c.i);
   const merged=[];
   peaks.forEach(i=>{const l=merged[merged.length-1]; if(l!=null && E[i].t-E[l].t<1.5){ if(E[i].e>E[l].e) merged[merged.length-1]=i; } else merged.push(i);});
   return merged.map((i,k)=>({n:k+1, t:E[i].t, coarse:E[i].e}));
@@ -1065,24 +1080,42 @@ async function refineBatch(src,count){
 }
 async function analyzeSwings(src){
   const ws=detectSwings(src);
-  if(ws.length<2){ src.swings=null; renderSwings();
-    if(src.duration>20 && ws.length===1){ src.swings=[ws[0]]; SW.busy=true; await refineSwing(src,ws[0]); SW.busy=false; applySwingPhases(src,ws[0]); src.swings=null; }
-    else estimatePhases(src);
-    return; }
-  src.swings=ws; SW.busy=true; renderSwings();
+  src.swings=ws; src.swingsDone=true;
+  if(!ws.length){ estimatePhases(src); renderSwings(); return; }
+  SW.busy=true; renderSwings();
   await refineBatch(src,5);
   SW.busy=false;
-  const best=src.swings.find(w=>w.rank===1);
-  if(S.A===src && best){ applySwingPhases(src,best); src.curSwing=best.n; setTime(best.impact); toast(`${ws.length}本のスイングを検出しました。おすすめはスイング#${best.n}です`); }
+  const best=src.swings.find(w=>w.rank===1&&w.refined);
+  if(S.A===src && best){ applySwingPhases(src,best); src.curSwing=best.n; setTime(best.impact);
+    toast(ws.length>1?`${ws.length}本のスイングを検出しました。おすすめはスイング#${best.n}です`:'スイングを1本検出しました'); }
+  else estimatePhases(src);
   renderSwings(); refreshPanel();
+}
+async function addSwingHere(){
+  const A=S.A; if(!A||SW.busy) return;
+  if(!A.swings) A.swings=[];
+  if(A.swings.some(w=>Math.abs((w.impact??w.t)-A.t)<0.8)){ toast('この位置のスイングはすでに一覧にあります'); return; }
+  const near=(A.energy||[]).reduce((b,p)=>Math.abs(p.t-A.t)<Math.abs(b.t-A.t)?p:b,{t:-1e9,e:0});
+  const w={n:Math.max(0,...A.swings.map(x=>x.n))+1, t:A.t, coarse:near.e||0, manual:true};
+  A.swings.push(w); SW.busy=true; renderSwings();
+  await refineSwing(A,w); scoreSwings(A); SW.busy=false;
+  A.curSwing=w.n; applySwingPhases(A,w); refreshPanel(); renderSwings(); renderAll();
+  toast(`スイング#${w.n} を追加しました`);
 }
 function renderSwings(){
   const panel=$('#swPanel'), A=S.A;
-  if(!A||!A.swings||A.swings.length<2){ panel.hidden=true; return; }
+  if(!A||A.kind!=='video'||!A.swingsDone){ if(!(A&&A.kind==='video'&&$('#swTitle').textContent.includes('解析中'))) panel.hidden=true; return; }
   panel.hidden=false;
+  if(!A.swings.length){
+    $('#swTitle').textContent='この動画のスイング — 自動では見つかりませんでした';
+    $('#swMore').hidden=true;
+    $('#swBest').innerHTML='<span>スイングの瞬間(インパクト付近)まで再生位置を動かして「この位置をスイングとして追加」を押してください。追加したスイングは「残す」で切り出して保存できます。</span><div class="row"><button class="primary" id="swAdd">この位置をスイングとして追加</button></div>';
+    $('#swAdd').onclick=addSwingHere; $('#swTable').innerHTML=''; return;
+  }
   const live=A.swings.filter(w=>!w.off);
   const nR=A.swings.filter(w=>w.refined&&!w.off).length;
   if(!SW.busy) $('#swTitle').textContent=`この動画のスイング — ${live.length}本`;
+  $('#swAddTop').hidden=SW.busy;
   $('#swMore').hidden = SW.busy || !A.swings.some(w=>!w.refined&&!w.off);
   const best=A.swings.find(w=>w.rank===1&&w.refined);
   const bx=$('#swBest');
@@ -1094,7 +1127,7 @@ function renderSwings(){
     $('#swKeepGo').onclick=()=>keepSwing(w); $('#swKeepNo').onclick=()=>{SW.confirm=null; renderSwings();};
   } else if(best){
     const second=A.swings.find(w=>w.rank===2&&w.refined);
-    bx.innerHTML=`<div><div class="note">おすすめ(${live.length}本中 1位)</div><div class="big">スイング#${best.n}<small>総合 ${best.score}点 · スイング時間 ${best.swingTime.toFixed(3)}秒 · ${fmtClock(best.impact)}</small></div></div>
+    bx.innerHTML=`<div><div class="note">${live.length>1?`おすすめ(${live.length}本中 1位)`:'検出したスイング'}</div><div class="big">スイング#${best.n}<small>総合 ${best.score}点 · スイング時間 ${best.swingTime.toFixed(3)}秒 · ${fmtClock(best.impact)}</small></div></div>
       <div class="row"><button data-see="${best.n}">見る</button>${second?`<button id="swCmp">2位(#${second.n})と並べる</button>`:''}<button class="primary" data-keep="${best.n}">ベストを残す</button></div>`;
     if(second) $('#swCmp').onclick=()=>compareSwings(best,second);
   } else bx.innerHTML='<span class="note">候補を解析しています…</span>';
@@ -1193,6 +1226,7 @@ $('#swPanel').addEventListener('click',e=>{
   else if(b.dataset.off){ A.swings.find(w=>w.n===+b.dataset.off).off=true; scoreSwings(A); renderSwings(); renderAll(); }
   else if(b.dataset.on){ A.swings.find(w=>w.n===+b.dataset.on).off=false; scoreSwings(A); renderSwings(); renderAll(); }
 });
+$('#swAddTop').addEventListener('click',addSwingHere);
 $('#swMore').addEventListener('click',async()=>{ const A=S.A; if(SW.busy||!A.swings) return; SW.busy=true; renderSwings(); await refineBatch(A,5); SW.busy=false; renderSwings(); });
 
 /* ---------- files ---------- */
@@ -1466,7 +1500,7 @@ async function openArchived(id,slot){
     else { if(S.A&&S.A.el) S.A.el.remove(); setSourceA(src); if(src.phases.impact!=null) setTime(src.phases.impact); }
     toast(slot==='B'?`「${d.title}」を B に開きました`:`「${d.title}」を開きました`);
     document.querySelector('.viewer').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
-    await scanEnergy(src); if(src.phases.impact==null) estimatePhases(src);
+    await scanEnergy(src); if(slot==='A'){ src.swings=detectSwings(src); src.swingsDone=true; if(src.phases.impact==null) estimatePhases(src); renderSwings(); } else if(src.phases.impact==null) estimatePhases(src);
     refreshPanel(); if(slot==='B') syncB(); renderAll();
   }catch(e){ toast(e.message||'動画を開けませんでした。削除された可能性があります。'); }
 }
